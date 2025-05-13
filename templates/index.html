@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能客户服务系统</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .complaints-section,
+        .query-section {
+            flex: 1;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        textarea,
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+        }
+
+        button {
+            padding: 8px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #response {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            min-height: 100px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>智能客户服务系统</h1>
+    <div class="container">
+        <div class="complaints-section">
+            <h2>投诉列表</h2>
+            <table id="complaintsTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>标题</th>
+                        <th>类别</th>
+                        <th>日期</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div class="query-section">
+            <h2>智能查询</h2>
+            <textarea id="question" rows="4" placeholder="输入您的问题..."></textarea>
+            <button onclick="submitQuery()">提交查询</button>
+            <div id="response"></div>
+        </div>
+    </div>
+
+    <script>
+        // 加载投诉数据
+        async function loadComplaints() {
+            try {
+                const response = await fetch('/complaint/');
+                const data = await response.json();
+                const tableBody = document.querySelector('#complaintsTable tbody');
+                tableBody.innerHTML = '';
+
+                data.complaints.forEach(complaint => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${complaint.id}</td>
+                        <td>${complaint.title}</td>
+                        <td>${complaint.category}</td>
+                        <td>${new Date(complaint.date).toLocaleString()}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('加载投诉数据失败:', error);
+            }
+        }
+
+        // 提交查询
+        async function submitQuery() {
+            const question = document.getElementById('question').value;
+            if (!question) return;
+
+            try {
+                const response = await fetch('/query/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ question })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                document.getElementById('response').innerHTML = data.response;
+            } catch (error) {
+                console.error('查询失败:', error);
+                document.getElementById('response').innerHTML = '查询失败: ' + error.message;
+            }
+        }
+
+        // 页面加载时获取数据
+        window.onload = loadComplaints;
+    </script>
+</body>
+
+</html>
