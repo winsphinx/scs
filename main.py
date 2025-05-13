@@ -1,21 +1,19 @@
+import os
+from litellm import completion
+
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from typing import Optional
+
 from database import DatabaseManager
-import os
-from dotenv import load_dotenv
 
 load_dotenv()
 
 # Load LLM configuration
-LLM_API_URL = os.getenv("LLM_API_URL")
 LLM_API_KEY = os.getenv("LLM_API_KEY")
 LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME")
-LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.7"))
-LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "1024"))
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -45,21 +43,25 @@ db = DatabaseManager()
 llm_chain = None
 if LLM_API_KEY:
     try:
-        from langchain_core.prompts import PromptTemplate
-        from langchain_core.runnables import RunnablePassthrough
+        os.environ["OPENROUTER_API_KEY"] = LLM_API_KEY
 
-        llm = OpenAI(
-            temperature=LLM_TEMPERATURE,
-            openai_api_key=LLM_API_KEY,
-            model_name=LLM_MODEL_NAME,
-            max_tokens=LLM_MAX_TOKENS,
-        )
-        prompt = PromptTemplate.from_template(
-            "Answer the following question: {question}"
-        )
-        llm_chain = {"question": RunnablePassthrough()} | prompt | llm
+        def llm_chain_func(question):
+            response = completion(
+                model=LLM_MODEL_NAME,
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {
+                        "role": "user",
+                        "content": f"Answer the following question: {question}",
+                    },
+                ],
+            )
+            return response.choices[0].message.content
+
+        llm_chain = llm_chain_func
     except ImportError as e:
-        print(f"Warning: LLM dependencies not installed - {str(e)}")
+        print(f"Warning: LiteLLM dependencies not installed - {str(e)}")
+        llm_chain = None
 
 
 @app.get("/")
@@ -90,9 +92,10 @@ async def query_llm(query: Query):
             status_code=501, detail="LLM服务不可用。请在.env文件中设置LLM_API_KEY"
         )
     try:
-        response = llm_chain.invoke(query.question)
+        response = llm_chain(query.question)
         return {"response": response}
     except Exception as e:
+        print(f"LLM查询错误: {str(e)}")
         raise HTTPException(status_code=500, detail=f"LLM查询失败: {str(e)}")
 
 
