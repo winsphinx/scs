@@ -24,6 +24,8 @@
             border: 1px solid #ddd;
             padding: 15px;
             border-radius: 5px;
+            height: calc(100vh - 200px);
+            overflow-y: auto;
         }
 
         table {
@@ -63,16 +65,71 @@
             background-color: #45a049;
         }
 
+        #question {
+            padding: 10px;
+            resize: none;
+            box-sizing: border-box;
+        }
+
         #response {
             margin-top: 10px;
             padding: 10px;
             border: 1px solid #ddd;
             min-height: 100px;
+            height: 66%;
+            overflow-y: auto;
+        }
+    </style>
+    <style>
+        /* 详情模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 60%;
+            border-radius: 5px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: black;
         }
     </style>
 </head>
 
 <body>
+    <!-- 详情模态框 -->
+    <div id="complaintModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle"></h2>
+            <p><strong>类别:</strong> <span id="modalCategory"></span></p>
+            <p><strong>日期:</strong> <span id="modalDate"></span></p>
+            <p><strong>内容:</strong></p>
+            <p id="modalContent"></p>
+        </div>
+    </div>
+
     <h1>智能客户服务系统</h1>
     <div class="container">
         <div class="complaints-section">
@@ -114,6 +171,8 @@
                         <td>${complaint.category}</td>
                         <td>${new Date(complaint.date).toLocaleString()}</td>
                     `;
+                    // 添加双击事件监听器
+                    row.addEventListener('dblclick', () => showComplaintDetails(complaint));
                     tableBody.appendChild(row);
                 });
             } catch (error) {
@@ -149,6 +208,31 @@
 
         // 页面加载时获取数据
         window.onload = loadComplaints;
+
+        // 获取模态框元素
+        const modal = document.getElementById("complaintModal");
+        const span = document.getElementsByClassName("close")[0];
+
+        // 点击关闭按钮时关闭模态框
+        span.onclick = function () {
+            modal.style.display = "none";
+        }
+
+        // 点击模态框外部时关闭
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        // 显示投诉详情
+        function showComplaintDetails(complaint) {
+            document.getElementById("modalTitle").textContent = complaint.title;
+            document.getElementById("modalCategory").textContent = complaint.category;
+            document.getElementById("modalDate").textContent = new Date(complaint.date).toLocaleString();
+            document.getElementById("modalContent").textContent = complaint.content;
+            modal.style.display = "block";
+        }
     </script>
 </body>
 
