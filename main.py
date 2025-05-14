@@ -1,5 +1,6 @@
 import os
 from litellm import completion
+import uvicorn
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
@@ -39,7 +40,6 @@ class Query(BaseModel):
 
 db = DatabaseManager()
 
-# Initialize LLM if API key is available
 llm_chain = None
 if LLM_API_KEY:
     try:
@@ -59,8 +59,7 @@ if LLM_API_KEY:
             return response.choices[0].message.content
 
         llm_chain = llm_chain_func
-    except ImportError as e:
-        print(f"Warning: LiteLLM dependencies not installed - {str(e)}")
+    except Exception as e:
         llm_chain = None
 
 
@@ -88,18 +87,13 @@ async def get_complaint():
 @app.post("/query/")
 async def query_llm(query: Query):
     if not llm_chain:
-        raise HTTPException(
-            status_code=501, detail="LLM服务不可用。请在.env文件中设置LLM_API_KEY"
-        )
+        raise HTTPException(status_code=501)
     try:
         response = llm_chain(query.question)
         return {"response": response}
     except Exception as e:
-        print(f"LLM查询错误: {str(e)}")
         raise HTTPException(status_code=500, detail=f"LLM查询失败: {str(e)}")
 
 
 if __name__ == "__main__":
-    import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=8000)

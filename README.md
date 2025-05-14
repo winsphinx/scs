@@ -9,11 +9,26 @@
 3. API服务：提供投诉数据的CRUD操作
 4. LLM集成：在设置API_KEY后提供智能问答功能
 
+## 开发环境
+- Python 3.8+
+- uv (推荐) 或 pip
+- SQLite 3
+
 ## 安装指南
-1. 安装Python 3.8+
-2. 安装依赖库：
+1. 克隆仓库
 ```bash
+git clone https://github.com/your-repo/smart_customer_service.git
+```
+2. 安装依赖：
+```bash
+uv sync
+# or
 pip install -r requirements.txt
+```
+
+## 测试方法
+```bash
+python -m pytest
 ```
 
 ## API使用说明
@@ -53,6 +68,10 @@ Content-Type: application/json
 1. 复制.env.example为.env
 2. 在.env中设置LLM_API_KEY
 3. 其他可选配置：
-   - LLM_MODEL_NAME: 模型名称(默认gpt-3.5-turbo)
-   - LLM_TEMPERATURE: 温度参数(默认0.7)
-   - LLM_MAX_TOKENS: 最大token数(默认1000)
+   - LLM_MODEL_NAME: 模型名称
+   - LLM_API_KEY：模型 KEY
+
+## 许可证
+MIT License
+
+Copyright (c) 2025 YourName
