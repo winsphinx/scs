@@ -1,0 +1,6 @@
+# LLM API Configuration
+[openrouter]
+LLM_API_KEY=
+LLM_MODEL_NAME=
+[ollama]
+LLM_URL=http://localhost:11434

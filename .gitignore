@@ -9,6 +9,6 @@ wheels/
 # Virtual environments
 .venv
 
-.env
+settings.ini
 complaint.db
 uv.lock

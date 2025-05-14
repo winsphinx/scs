@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智能客户服务系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -149,7 +150,10 @@
         <div class="query-section">
             <h2>智能查询</h2>
             <textarea id="question" rows="4" placeholder="输入您的问题..."></textarea>
-            <button onclick="submitQuery()">提交查询</button>
+            <button onclick="submitQuery()" id="queryButton">
+                <span id="buttonText">提交查询</span>
+                <i id="spinner" class="fas fa-hourglass-half" style="display: none; margin-left: 5px;"></i>
+            </button>
             <div id="response"></div>
         </div>
     </div>
@@ -185,6 +189,15 @@
             const question = document.getElementById('question').value;
             if (!question) return;
 
+            // 显示加载状态
+            const button = document.getElementById('queryButton');
+            const spinner = document.getElementById('spinner');
+            const buttonText = document.getElementById('buttonText');
+
+            button.disabled = true;
+            buttonText.textContent = '查询中...';
+            spinner.style.display = 'inline-block';
+
             try {
                 const response = await fetch('/query/', {
                     method: 'POST',
@@ -199,10 +212,39 @@
                 }
 
                 const data = await response.json();
-                document.getElementById('response').innerHTML = data.response;
+                // 显示litellm原始返回结果和SQL查询结果
+                document.getElementById('response').innerHTML = `
+                    <strong>自然语言查询:</strong><br>${question}<br><br>
+                    <strong>生成的SQL查询:</strong><br>${data.response}<br><br>
+                    <strong>查询结果:</strong><br>找到 ${data.complaints ? data.complaints.length : 0} 条记录
+                `;
+
+                // 如果有查询结果，更新投诉列表
+                if (data.complaints && data.complaints.length > 0) {
+                    const tableBody = document.querySelector('#complaintsTable tbody');
+                    tableBody.innerHTML = '';
+
+                    data.complaints.forEach(complaint => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${complaint.id}</td>
+                            <td>${complaint.title}</td>
+                            <td>${complaint.category}</td>
+                            <td>${complaint.date ? new Date(complaint.date).toLocaleString() : ''}</td>
+                        `;
+                        // 添加双击事件监听器
+                        row.addEventListener('dblclick', () => showComplaintDetails(complaint));
+                        tableBody.appendChild(row);
+                    });
+                }
             } catch (error) {
                 console.error('查询失败:', error);
                 document.getElementById('response').innerHTML = '查询失败: ' + error.message;
+            } finally {
+                // 恢复按钮状态
+                button.disabled = false;
+                buttonText.textContent = '提交查询';
+                spinner.style.display = 'none';
             }
         }
 
