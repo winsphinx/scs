@@ -17,27 +17,6 @@ from litellm import litellm
 # litellm._turn_on_debug()
 # ##
 
-config = configparser.ConfigParser()
-config.read("settings.ini")
-
-configs = {}
-for section in config.sections():
-    configs[section] = {}
-    for key, value in config.items(section):
-        configs[section][key] = value
-
-
-app = FastAPI()
-templates = Jinja2Templates(directory="templates")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 
 class Complaint(BaseModel):
     title: str
@@ -49,75 +28,92 @@ class Query(BaseModel):
     question: str
 
 
+DEFAULT_SYSTEM_PROMPT = "You are an expert in SQLite. Convert the following natural language description into a valid SQLite query. Return only the SQLite query, nothing else."
+
+config = configparser.ConfigParser()
+config.read("settings.ini")
+
+templates = Jinja2Templates(directory="templates")
+
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 db = DatabaseManager()
 
 llm_chain = None
 
-
 # 全局变量存储对话历史
-conversation_history = [
+conversation = [
     {
         "role": "system",
-        "content": "You are an expert in SQLite. Convert the following natural language description into a valid SQLite query. Return only the SQLite query, nothing else.",
+        "content": DEFAULT_SYSTEM_PROMPT,
     }
 ]
 
 
 def create_llm_chain(model_name, api_base=None, api_key=None, stream=False):
     def llm_chain_func(question):
-        global conversation_history
+        global conversation
 
         # 添加用户新问题到对话历史
-        conversation_history.append({"role": "user", "content": question})
+        conversation.append({"role": "user", "content": question})
 
         response = completion(
             model=model_name,
             api_base=api_base,
             api_key=api_key,
             stream=stream,
-            messages=conversation_history,
+            messages=conversation,
         )
 
+        ai_response_content = ""
         if stream:
             # 处理流式响应
-            full_response = ""
             for chunk in response:
                 if chunk.choices[0].delta.content:
-                    full_response += chunk.choices[0].delta.content
-
-            # 添加AI响应到对话历史
-            conversation_history.append({"role": "assistant", "content": full_response})
-            return full_response
+                    ai_response_content += chunk.choices[0].delta.content
         else:
             # 处理普通响应
-            ai_response = response.choices[0].message.content
+            ai_response_content = response.choices[0].message.content
 
-            # 添加AI响应到对话历史
-            conversation_history.append({"role": "assistant", "content": ai_response})
-            return ai_response
+        # 添加AI响应到对话历史
+        conversation.append({"role": "assistant", "content": ai_response_content})
+        return ai_response_content
 
     return llm_chain_func
 
 
-if configs["openrouter"]["enabled"].upper() == "TRUE":
-    llm_chain = create_llm_chain(
-        model_name=f"openrouter/{configs['openrouter']['model_name']}",
-        api_key=configs["openrouter"]["api_key"],
-        # stream=True,
-    )
+def initialize_llm_chain(config: configparser.ConfigParser):
+    llm_providers = {
+        "openrouter": {"params": ["model_name", "api_key"]},
+        "ollama": {"params": ["model_name", "base_url"]},
+        "openai": {"params": ["model_name", "base_url", "api_key"]},
+    }
 
-if configs["ollama"]["enabled"].upper() == "TRUE":
-    llm_chain = create_llm_chain(
-        model_name=f"ollama/{configs['ollama']['model_name']}",
-        api_base=configs["ollama"]["base_url"],
-    )
+    for provider_name, provider_info in llm_providers.items():
+        if (
+            config.has_section(provider_name)
+            and config.get(provider_name, "enabled", fallback="FALSE").upper() == "TRUE"
+        ):
+            model_name = f"{provider_name}/{config[provider_name]['model_name']}"
+            chain_params = {"model_name": model_name}
+            for param_key in provider_info["params"]:
+                if param_key != "model_name":
+                    if config.has_option(provider_name, param_key):
+                        chain_params[param_key] = config[provider_name][param_key]
 
-if configs["openai"]["enabled"].upper() == "TRUE":
-    llm_chain = create_llm_chain(
-        model_name=f"openai/{configs['openai']['model_name']}",
-        api_base=configs["openai"]["base_url"],
-        api_key=configs["openai"]["api_key"],
-    )
+            return create_llm_chain(**chain_params)
+
+    return None
+
+
+llm_chain = initialize_llm_chain(config)
 
 
 @app.get("/")
@@ -143,11 +139,11 @@ async def get_complaint():
 
 @app.post("/reset/")
 async def reset_conversation():
-    global conversation_history
-    conversation_history = [
+    global conversation
+    conversation = [
         {
             "role": "system",
-            "content": "You are an expert in SQLite. Convert the following natural language description into a valid SQLite query. Return only the SQLite query, nothing else.",
+            "content": DEFAULT_SYSTEM_PROMPT,
         }
     ]
     return {"status": "success"}
@@ -181,18 +177,7 @@ async def query_llm(query: Query):
         conn.close()
 
         # 转换为字典列表
-        complaints = []
-        for row in result:
-            complaints.append(
-                {
-                    "id": row[0],
-                    "title": row[1],
-                    "content": row[2],
-                    "date": row[3],
-                    "category": row[4],
-                    "source": row[5],
-                }
-            )
+        complaints = [dict(row) for row in result]
 
         return {"response": response, "complaints": complaints}
 
