@@ -1,5 +1,4 @@
 import configparser
-import os
 import re
 import sqlite3
 
@@ -12,11 +11,30 @@ from pydantic import BaseModel
 
 from database import DatabaseManager
 
+# ##
+# from litellm import litellm
+
+# litellm._turn_on_debug()
+# ##
+
 config = configparser.ConfigParser()
 config.read("settings.ini")
 
-LLM_API_KEY = config.get("openrouter", "LLM_API_KEY")
-LLM_MODEL_NAME = f"openrouter/{config.get('openrouter', 'LLM_MODEL_NAME')}"
+try:
+    OPENROUTER_ENABLED = config.get("openrouter", "ENABLED").upper()
+    OPENROUTER_API_KEY = config.get("openrouter", "API_KEY")
+    OPENROUTER_MODEL_NAME = f"openrouter/{config.get('openrouter', 'MODEL_NAME')}"
+
+    OLLAMA_ENABLED = config.get("ollama", "ENABLED").upper()
+    OLLAMA_URL = config.get("ollama", "BASE_URL")
+    OLLAMA_MODEL_NAME = f"ollama/{config.get('ollama', 'MODEL_NAME')}"
+
+    OPENAI_ENABLED = config.get("openai", "ENABLED").upper()
+    OPENAI_API_KEY = config.get("openai", "API_KEY")
+    OPENAI_URL = config.get("openai", "BASE_URL")
+    OPENAI_MODEL_NAME = f"openai/{config.get('openai', 'MODEL_NAME')}"
+except:
+    pass
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -43,29 +61,48 @@ class Query(BaseModel):
 db = DatabaseManager()
 
 llm_chain = None
-if LLM_API_KEY:
-    try:
-        os.environ["OPENROUTER_API_KEY"] = LLM_API_KEY
 
-        def llm_chain_func(question):
-            response = completion(
-                model=LLM_MODEL_NAME,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert in SQLite. Convert the following natural language description into a valid SQLite query.",
-                    },
-                    {
-                        "role": "user",
-                        "content": f"Description: {question}",
-                    },
-                ],
-            )
-            return response.choices[0].message.content
 
-        llm_chain = llm_chain_func
-    except Exception as e:
-        llm_chain = None
+def create_llm_chain(model_name, api_base=None, api_key=None):
+    def llm_chain_func(question):
+        response = completion(
+            model=model_name,
+            api_base=api_base,
+            api_key=api_key,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert in SQLite. Convert the following natural language description into a valid SQLite query. Return only the SQLite query, nothing else.",
+                },
+                {
+                    "role": "user",
+                    "content": question,
+                },
+            ],
+        )
+        return response.choices[0].message.content
+
+    return llm_chain_func
+
+
+if OPENROUTER_ENABLED == "TRUE":
+    llm_chain = create_llm_chain(
+        model_name=OPENROUTER_MODEL_NAME,
+        api_key=OPENROUTER_API_KEY,
+    )
+
+if OLLAMA_ENABLED == "TRUE":
+    llm_chain = create_llm_chain(
+        model_name=OLLAMA_MODEL_NAME,
+        api_base=OLLAMA_URL,
+    )
+
+if OPENAI_ENABLED == "TRUE":
+    llm_chain = create_llm_chain(
+        model_name=OPENAI_MODEL_NAME,
+        api_base=OPENAI_URL,
+        api_key=OPENAI_API_KEY,
+    )
 
 
 @app.get("/")
@@ -96,7 +133,9 @@ async def query_llm(query: Query):
     try:
         response = llm_chain(query.question)
 
-        # 先尝试提取代码块中的SQL
+        print(response)
+
+        # 首选方案，尝试提取返回结果中的SQL
         sql_match = re.search(r"```sql\n(.*?)\n```", response, re.DOTALL)
         if sql_match:
             sql_query = sql_match.group(1).strip()
@@ -110,28 +149,30 @@ async def query_llm(query: Query):
         # if not sql_query.lower().startswith("select"):
         #     raise HTTPException(status_code=400, detail="只允许执行SELECT查询")
 
+        print(sql_query)
+
         # 执行SQL查询
-        # conn = get_db_connection()
-        # result = conn.execute(sql_query).fetchall()
-        # conn.close()
+        conn = get_db_connection()
+        result = conn.execute(sql_query).fetchall()
+        conn.close()
 
         # 转换为字典列表
-        # complaints = []
-        # for row in result:
-        #     complaints.append(
-        #         {
-        #             "id": row[0],
-        #             "title": row[1],
-        #             "content": row[2],
-        #             "date": row[3].isoformat() if row[3] else None,
-        #             "category": row[4],
-        #             "source": row[5],
-        #         }
-        #     )
+        complaints = []
+        for row in result:
+            complaints.append(
+                {
+                    "id": row[0],
+                    "title": row[1],
+                    "content": row[2],
+                    "date": row[3],
+                    "category": row[4],
+                    "source": row[5],
+                }
+            )
 
-        # return {"response": response, "complaints": complaints}
+        return {"response": response, "complaints": complaints}
 
-        return {"response": sql_query}
+        # return {"response": sql_query}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")
 
