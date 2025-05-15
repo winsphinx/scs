@@ -9,3 +9,9 @@ MODEL_NAME=
 ENABLED=False
 BASE_URL=http://localhost:11434
 MODEL_NAME=
+
+[openai]
+ENABLED=false
+API_KEY=
+BASE_URL=
+MODEL_NAME=

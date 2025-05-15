@@ -17,7 +17,7 @@
 ## 安装指南
 1. 克隆仓库
 ```bash
-git clone https://github.com/your-repo/smart_customer_service.git
+git clone https://github.com/winsphinx/scs
 ```
 2. 安装依赖：
 ```bash
@@ -65,13 +65,13 @@ Content-Type: application/json
 ```
 
 ## 配置说明
-1. 复制.env.example为.env
-2. 在.env中设置LLM_API_KEY
+1. 复制`settings.ini.example`为`settings.ini`
+2. 在`settings.ini`中设置 API_KEY
 3. 其他可选配置：
-   - LLM_MODEL_NAME: 模型名称
-   - LLM_API_KEY：模型 KEY
+   - BASE_URL：模型地址
+   - MODEL_NAME: 模型名称
 
 ## 许可证
 MIT License
 
-Copyright (c) 2025 YourName
+Copyright (c) 2025
