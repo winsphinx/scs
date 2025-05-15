@@ -14,7 +14,7 @@ from database import DatabaseManager
 # ## for debug
 from litellm import litellm
 
-# litellm._turn_on_debug()
+litellm._turn_on_debug()
 # ##
 
 
@@ -92,8 +92,8 @@ def create_llm_chain(model_name, api_base=None, api_key=None, stream=False):
 def initialize_llm_chain(config: configparser.ConfigParser):
     llm_providers = {
         "openrouter": {"params": ["model_name", "api_key"]},
-        "ollama": {"params": ["model_name", "base_url"]},
-        "openai": {"params": ["model_name", "base_url", "api_key"]},
+        "ollama": {"params": ["model_name", "api_base"]},
+        "openai": {"params": ["model_name", "api_base", "api_key"]},
     }
 
     for provider_name, provider_info in llm_providers.items():

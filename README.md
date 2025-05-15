@@ -68,7 +68,7 @@ Content-Type: application/json
 1. 复制`settings.ini.example`为`settings.ini`
 2. 在`settings.ini`中设置 API_KEY
 3. 其他可选配置：
-   - BASE_URL：模型地址
+   - API_BASE：模型地址
    - MODEL_NAME: 模型名称
 
 ## 许可证
