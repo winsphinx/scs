@@ -20,21 +20,12 @@ from litellm import litellm
 config = configparser.ConfigParser()
 config.read("settings.ini")
 
-try:
-    OPENROUTER_ENABLED = config.get("openrouter", "ENABLED").upper()
-    OPENROUTER_API_KEY = config.get("openrouter", "API_KEY")
-    OPENROUTER_MODEL_NAME = f"openrouter/{config.get('openrouter', 'MODEL_NAME')}"
+configs = {}
+for section in config.sections():
+    configs[section] = {}
+    for key, value in config.items(section):
+        configs[section][key] = value
 
-    OLLAMA_ENABLED = config.get("ollama", "ENABLED").upper()
-    OLLAMA_URL = config.get("ollama", "BASE_URL")
-    OLLAMA_MODEL_NAME = f"ollama/{config.get('ollama', 'MODEL_NAME')}"
-
-    OPENAI_ENABLED = config.get("openai", "ENABLED").upper()
-    OPENAI_API_KEY = config.get("openai", "API_KEY")
-    OPENAI_URL = config.get("openai", "BASE_URL")
-    OPENAI_MODEL_NAME = f"openai/{config.get('openai', 'MODEL_NAME')}"
-except:
-    pass
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -108,24 +99,24 @@ def create_llm_chain(model_name, api_base=None, api_key=None, stream=False):
     return llm_chain_func
 
 
-if OPENROUTER_ENABLED == "TRUE":
+if configs["openrouter"]["enabled"].upper() == "TRUE":
     llm_chain = create_llm_chain(
-        model_name=OPENROUTER_MODEL_NAME,
-        api_key=OPENROUTER_API_KEY,
+        model_name=f"openrouter/{configs['openrouter']['model_name']}",
+        api_key=configs["openrouter"]["api_key"],
         # stream=True,
     )
 
-if OLLAMA_ENABLED == "TRUE":
+if configs["ollama"]["enabled"].upper() == "TRUE":
     llm_chain = create_llm_chain(
-        model_name=OLLAMA_MODEL_NAME,
-        api_base=OLLAMA_URL,
+        model_name=f"ollama/{configs['ollama']['model_name']}",
+        api_base=configs["ollama"]["base_url"],
     )
 
-if OPENAI_ENABLED == "TRUE":
+if configs["openai"]["enabled"].upper() == "TRUE":
     llm_chain = create_llm_chain(
-        model_name=OPENAI_MODEL_NAME,
-        api_base=OPENAI_URL,
-        api_key=OPENAI_API_KEY,
+        model_name=f"openai/{configs['openai']['model_name']}",
+        api_base=configs["openai"]["base_url"],
+        api_key=configs["openai"]["api_key"],
     )
 
 
