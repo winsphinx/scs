@@ -141,6 +141,18 @@ async def get_complaint():
     return {"complaints": complaints}
 
 
+@app.post("/reset/")
+async def reset_conversation():
+    global conversation_history
+    conversation_history = [
+        {
+            "role": "system",
+            "content": "You are an expert in SQLite. Convert the following natural language description into a valid SQLite query. Return only the SQLite query, nothing else.",
+        }
+    ]
+    return {"status": "success"}
+
+
 @app.post("/query/")
 async def query_llm(query: Query):
     if not llm_chain:

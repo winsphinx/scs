@@ -150,10 +150,16 @@
         <div class="query-section">
             <h2>智能查询</h2>
             <textarea id="question" rows="4" placeholder="输入您的问题..."></textarea>
-            <button onclick="submitQuery()" id="queryButton">
-                <span id="buttonText">提交查询</span>
-                <i id="spinner" class="fas fa-hourglass-half" style="display: none; margin-left: 5px;"></i>
-            </button>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="submitQuery()" id="queryButton">
+                    <span id="buttonQuery">提交查询</span>
+                    <i id="spinner" class="fas fa-hourglass-half" style="display: none; margin-left: 5px;"></i>
+                </button>
+                <button onclick="resetContext()" id="resetButton">
+                    <span id="buttonReset">清除上下文</span>
+                    <!-- <i id="spinner" class="fas fa-hourglass-half" style="display: none; margin-left: 5px;"></i> -->
+                </button>
+            </div>
             <div id="response"></div>
         </div>
     </div>
@@ -192,10 +198,10 @@
             // 显示加载状态
             const button = document.getElementById('queryButton');
             const spinner = document.getElementById('spinner');
-            const buttonText = document.getElementById('buttonText');
+            const buttonQuery = document.getElementById('buttonQuery');
 
             button.disabled = true;
-            buttonText.textContent = '查询中...';
+            buttonQuery.textContent = '查询中...';
             spinner.style.display = 'inline-block';
 
             try {
@@ -243,7 +249,7 @@
             } finally {
                 // 恢复按钮状态
                 button.disabled = false;
-                buttonText.textContent = '提交查询';
+                buttonQuery.textContent = '提交查询';
                 spinner.style.display = 'none';
             }
         }
@@ -274,6 +280,25 @@
             document.getElementById("modalDate").textContent = new Date(complaint.date).toLocaleString();
             document.getElementById("modalContent").textContent = complaint.content;
             modal.style.display = "block";
+        }
+
+        // 重置上下文
+        async function resetContext() {
+            try {
+                const response = await fetch('/reset/', {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                document.getElementById('response').innerHTML = '上下文已重置，可以开始新的对话';
+                document.getElementById('question').value = '';
+            } catch (error) {
+                console.error('重置上下文失败:', error);
+                document.getElementById('response').innerHTML = '重置上下文失败: ' + error.message;
+            }
         }
 
         // 回车键提交功能
