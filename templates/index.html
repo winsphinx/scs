@@ -275,6 +275,14 @@
             document.getElementById("modalContent").textContent = complaint.content;
             modal.style.display = "block";
         }
+
+        // 回车键提交功能
+        document.getElementById('question').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // 防止默认换行行为
+                submitQuery();
+            }
+        });
     </script>
 </body>
 
