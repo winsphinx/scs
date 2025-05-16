@@ -18,7 +18,7 @@ class Complaint(Base):
 
 
 class DatabaseManager:
-    def __init__(self, db_name="complaint.db"):
+    def __init__(self, db_name="example.db"):
         self.engine = create_engine(f"sqlite:///{db_name}")
         Base.metadata.create_all(self.engine)
         Session = sessionmaker(bind=self.engine)
