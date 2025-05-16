@@ -90,23 +90,19 @@ def create_llm_chain(model_name, api_base=None, api_key=None, stream=False):
 
 
 def initialize_llm_chain(config: configparser.ConfigParser):
-    llm_providers = {
-        "openrouter": {"params": ["model_name", "api_key"]},
-        "ollama": {"params": ["model_name", "api_base"]},
-        "openai": {"params": ["model_name", "api_base", "api_key"]},
-    }
+    # 自动从配置文件中获取所有provider
+    for provider_name in config.sections():
 
-    for provider_name, provider_info in llm_providers.items():
-        if (
-            config.has_section(provider_name)
-            and config.get(provider_name, "enabled", fallback="FALSE").upper() == "TRUE"
-        ):
+        if config.get(provider_name, "enabled", fallback="FALSE").upper() == "TRUE":
             model_name = f"{provider_name}/{config[provider_name]['model_name']}"
             chain_params = {"model_name": model_name}
-            for param_key in provider_info["params"]:
-                if param_key != "model_name":
-                    if config.has_option(provider_name, param_key):
-                        chain_params[param_key] = config[provider_name][param_key]
+
+            # 自动收集provider的所有参数
+            for param_key in config[provider_name]:
+                if param_key.lower() not in ["enabled", "model_name"]:
+                    # 处理参数名标准化
+                    normalized_key = param_key.lower()
+                    chain_params[normalized_key] = config[provider_name][param_key]
 
             return create_llm_chain(**chain_params)
 
