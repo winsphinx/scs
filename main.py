@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 from litellm import litellm
 
-litellm._turn_on_debug()
+# litellm._turn_on_debug()
 ##
 
 DEFAULT_SYSTEM_PROMPT = "You are an expert in SQLite. Convert the following natural language description into a valid SQLite query. Return only the SQLite query, nothing else."
