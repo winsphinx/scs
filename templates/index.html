@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>投诉管理系统</title>
+    <link rel="stylesheet" href="../static/css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>用户投诉管理平台</h1>
+
+        <div class="dashboard">
+            <div class="stats-card">
+                <h2>投诉分类统计</h2>
+                <div class="actions-container">
+                    <button class="simulate-btn">生成模拟数据</button>
+                    <button class="refresh-btn">刷新</button>
+                </div>
+                <div id="categoryChart"></div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="query-section">
+                <h2>智能投诉查询</h2>
+                <div class="search-container">
+                    <textarea id="naturalQuery" rows="4"
+                        placeholder="示例查询：\n1. 用户user_5本周的投诉记录\n2. 过去24小时未解决的电视问题\n3. 显示所有冰箱质量投诉"
+                        class="search-input"></textarea>
+                    <button class="search-btn" onclick="handleSearch()">
+                        🔍 智能搜索
+                    </button>
+                </div>
+                <div id="llmOutput" class="output-box"></div>
+            </div>
+
+            <div class="list-section">
+                <div class="search-header">
+                    <h2>投诉列表</h2>
+                </div>
+                <div id="complaintList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="complaintModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>投诉详情</h2>
+            <p><strong>产品类别:</strong> <span id="modalCategory"></span></p>
+            <p><strong>用户ID:</strong> <span id="modalUserId"></span></p>
+            <p><strong>投诉时间:</strong> <span id="modalTime"></span></p>
+            <p><strong>投诉内容:</strong> <span id="modalContent"></span></p>
+        </div>
+    </div>
+
+    <script src="../static/js/app.js"></script>
+</body>
+
+</html>

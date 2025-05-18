@@ -1,0 +1,20 @@
+[
+  {
+    "complaint_time": "2023-10-01 10:00:00",
+    "content": "产品质量问题，电视屏幕有划痕。",
+    "user_id": "user123",
+    "product_category": "电视"
+  },
+  {
+    "complaint_time": "2023-10-02 14:30:00",
+    "content": "冰箱制冷效果不好。",
+    "user_id": "user456",
+    "product_category": "冰箱"
+  },
+  {
+    "complaint_time": "2023-10-03 09:15:00",
+    "content": "洗衣机噪音太大。",
+    "user_id": "user789",
+    "product_category": "洗衣机"
+  }
+]
