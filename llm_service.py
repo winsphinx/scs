@@ -5,7 +5,7 @@ from typing import Tuple
 
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
-from langchain_openai import OpenAI
+from langchain_openai import ChatOpenAI
 
 
 class ComplaintAnalyzer:
@@ -30,10 +30,10 @@ class ComplaintAnalyzer:
             "未知": "感谢您的反馈，我们将尽快处理您的问题。",
         }
         if self.mode == "real" and self.api_key:
-            self.llm = OpenAI(
+            self.llm = ChatOpenAI(
+                model=self.model_name,
                 api_key=self.api_key,
                 base_url=self.base_url,
-                model=self.model_name,
             )
             self.classification_prompt = PromptTemplate(
                 input_variables=["text"],
@@ -68,7 +68,7 @@ class ComplaintAnalyzer:
         if self.mode == "real" and self.llm:
             # Use the classification chain
             result = self.classification_chain.invoke(text)
-            return result["text"].strip()
+            return result.content.strip()
         else:
             for category, pattern in self.product_patterns.items():
                 if pattern.search(text):
@@ -201,3 +201,4 @@ class ComplaintAnalyzer:
 if __name__ == "__main__":
     complaint_analyzer = ComplaintAnalyzer()
     print(complaint_analyzer.classify_complaint("我的冰箱坏了"))
+    print(complaint_analyzer.classify_complaint("我的脑袋坏了"))
