@@ -83,7 +83,7 @@ class ComplaintAnalyzer:
             category = self.classify_complaint(text)
         if self.mode == "real" and self.llm:
             result = self.reply_chain.invoke({"text": text, "category": category})
-            return result["text"].strip()
+            return result.content.strip()
         else:
             return self.templates.get(category, self.templates["未知"])
 
@@ -103,10 +103,11 @@ class ComplaintAnalyzer:
             """
             CREATE TABLE IF NOT EXISTS complaints (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                text TEXT NOT NULL,
-                category TEXT NOT NULL,
-                reply TEXT NOT NULL,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                complaint_time DATETIME NOT NULL,
+                content TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                product_category TEXT NOT NULL,
+                reply TEXT
             )
         """
         )
@@ -117,8 +118,8 @@ class ComplaintAnalyzer:
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            INSERT INTO complaints (text, category, reply)
-            VALUES (?, ?, ?)
+            INSERT INTO complaints (content, product_category, reply, complaint_time, user_id)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP, 'anonymous')
         """,
             (text, category, reply),
         )
@@ -130,7 +131,7 @@ class ComplaintAnalyzer:
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            SELECT id, text, category, reply, timestamp
+            SELECT id, content, product_category, reply, complaint_time
             FROM complaints WHERE id = ?
         """,
             (complaint_id,),
@@ -139,10 +140,10 @@ class ComplaintAnalyzer:
         return (
             {
                 "id": row[0],
-                "text": row[1],
-                "category": row[2],
+                "content": row[1],
+                "product_category": row[2],
                 "reply": row[3],
-                "timestamp": row[4],
+                "complaint_time": row[4],
             }
             if row
             else None
@@ -151,19 +152,19 @@ class ComplaintAnalyzer:
     def update_complaint(
         self,
         complaint_id: int,
-        text: str = None,
-        category: str = None,
+        content: str = None,
+        product_category: str = None,
         reply: str = None,
     ) -> bool:
         """更新投诉记录"""
         updates = []
         params = []
-        if text:
-            updates.append("text = ?")
-            params.append(text)
-        if category:
-            updates.append("category = ?")
-            params.append(category)
+        if content:
+            updates.append("content = ?")
+            params.append(content)
+        if product_category:
+            updates.append("product_category = ?")
+            params.append(product_category)
         if reply:
             updates.append("reply = ?")
             params.append(reply)
@@ -200,5 +201,13 @@ class ComplaintAnalyzer:
 
 if __name__ == "__main__":
     complaint_analyzer = ComplaintAnalyzer()
-    print(complaint_analyzer.classify_complaint("我的冰箱坏了"))
-    print(complaint_analyzer.classify_complaint("我的脑袋坏了"))
+    # print(complaint_analyzer.classify_complaint("我的冰箱坏了"))
+
+    # 写入测试数据
+    test_text = "测试投诉内容 - 电视屏幕有坏点"
+    test_category = "电视"
+    test_reply = "测试回复 - 我们会尽快处理您的电视问题"
+    complaint_id = complaint_analyzer.create_complaint(
+        test_text, test_category, test_reply
+    )
+    print(f"已插入测试数据，ID: {complaint_id}")
