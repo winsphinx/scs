@@ -49,9 +49,9 @@ class ComplaintAnalyzer:
             self.query_parser_prompt = PromptTemplate(
                 input_variables=["query"],
                 template="将用户自然语言查询转换为SQL WHERE条件（使用SQLAlchemy语法）：\n"
-                "可用字段：complaint_time（datetime）, content（str）, user_id（str）, product_category（str）\n"
+                "可用字段：complaint_time（datetime）, content（str）, user_id（str）, complaint_category（str）\n"
                 "示例输入：'查找用户123最近3天关于电视的投诉'\n"
-                "示例输出：and_(Complaint.user_id == '123', Complaint.complaint_time >= datetime.now() - timedelta(days=3), Complaint.product_category == '电视')\n"
+                "示例输出：and_(Complaint.user_id == '123', Complaint.complaint_time >= datetime.now() - timedelta(days=3), Complaint.complaint_category == '电视')\n"
                 "查询内容：{query}\n"
                 "输出：",
             )
@@ -106,7 +106,7 @@ class ComplaintAnalyzer:
                 complaint_time DATETIME NOT NULL,
                 content TEXT NOT NULL,
                 user_id TEXT NOT NULL,
-                product_category TEXT NOT NULL,
+                complaint_category TEXT NOT NULL,
                 reply TEXT
             )
         """
@@ -118,7 +118,7 @@ class ComplaintAnalyzer:
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            INSERT INTO complaints (content, product_category, reply, complaint_time, user_id)
+            INSERT INTO complaints (content, complaint_category, reply, complaint_time, user_id)
             VALUES (?, ?, ?, CURRENT_TIMESTAMP, 'anonymous')
         """,
             (text, category, reply),
@@ -131,7 +131,7 @@ class ComplaintAnalyzer:
         cursor = self.conn.cursor()
         cursor.execute(
             """
-            SELECT id, content, product_category, reply, complaint_time
+            SELECT id, content, complaint_category, reply, complaint_time
             FROM complaints WHERE id = ?
         """,
             (complaint_id,),
@@ -141,7 +141,7 @@ class ComplaintAnalyzer:
             {
                 "id": row[0],
                 "content": row[1],
-                "product_category": row[2],
+                "complaint_category": row[2],
                 "reply": row[3],
                 "complaint_time": row[4],
             }
@@ -153,7 +153,7 @@ class ComplaintAnalyzer:
         self,
         complaint_id: int,
         content: str = None,
-        product_category: str = None,
+        complaint_category: str = None,
         reply: str = None,
     ) -> bool:
         """更新投诉记录"""
@@ -162,9 +162,9 @@ class ComplaintAnalyzer:
         if content:
             updates.append("content = ?")
             params.append(content)
-        if product_category:
-            updates.append("product_category = ?")
-            params.append(product_category)
+        if complaint_category:
+            updates.append("complaint_category = ?")
+            params.append(complaint_category)
         if reply:
             updates.append("reply = ?")
             params.append(reply)

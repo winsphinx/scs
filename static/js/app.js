@@ -14,7 +14,7 @@ async function submitComplaint(event) {
 
     const complaintData = {
         user_id: document.getElementById('userId').value,
-        product_category: document.getElementById('productCategory').value,
+        complaint_category: document.getElementById('productCategory').value,
         content: document.getElementById('content').value,
         complaint_time: new Date().toISOString()
     };
@@ -57,8 +57,8 @@ async function loadComplaints() {
                 </thead>
                 <tbody>
                     ${data.map(complaint => `
-                        <tr ondblclick="showComplaintDetails('${complaint.product_category}', '${complaint.user_id}', '${new Date(complaint.complaint_time).toLocaleString()}', '${complaint.content.replace(/'/g, "\\'").replace(/\n/g, "\\n")}')">
-                            <td>${complaint.product_category}</td>
+                        <tr ondblclick="showComplaintDetails('${complaint.complaint_category}', '${complaint.user_id}', '${new Date(complaint.complaint_time).toLocaleString()}', '${complaint.content.replace(/'/g, "\\'").replace(/\n/g, "\\n")}')">
+                            <td>${complaint.complaint_category}</td>
                             <td>${complaint.user_id}</td>
                             <td>${new Date(complaint.complaint_time).toLocaleString()}</td>
                             <td>${complaint.content}</td>

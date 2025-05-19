@@ -41,7 +41,7 @@ def test_create_complaint(client):
         "complaint_time": "2024-01-01T00:00:00",
         "content": "测试投诉内容",
         "user_id": "test_user_1",
-        "product_category": "electronics",
+        "complaint_category": "electronics",
     }
     response = client.post("/complaints/", json=test_data)
     assert response.status_code == 200
@@ -63,7 +63,7 @@ def test_complaint_crud_flow(client):
             "complaint_time": "2024-01-01T00:00:00",
             "content": "完整流程测试",
             "user_id": "crud_test_user",
-            "product_category": "home",
+            "complaint_category": "home",
         },
     )
     assert create_res.status_code == 200
@@ -81,7 +81,7 @@ def test_complaint_crud_flow(client):
             "complaint_time": "2024-01-02T00:00:00",
             "content": "更新后的内容",
             "user_id": "crud_test_user",
-            "product_category": "home",
+            "complaint_category": "home",
         },
     )
     assert update_res.status_code == 200
@@ -106,7 +106,7 @@ def test_statistics(client, db):
             "complaint_time": datetime.now().isoformat(),
             "content": f"测试统计{category}",
             "user_id": "stat_test_user",
-            "product_category": category,
+            "complaint_category": category,
         }
         client.post("/complaints/", json=complaint)
 
@@ -120,14 +120,14 @@ def test_simulate_endpoint(client):
     response = client.post("/simulate/")
     assert response.status_code == 200
     assert len(response.json()) == 10
-    categories = {item["product_category"] for item in response.json()}
+    categories = {item["complaint_category"] for item in response.json()}
     assert len(categories) > 1  # 确保生成多个品类
 
 
 def test_query_with_search(client):
     # 需要根据实际query_parser_chain的实现调整测试逻辑
     # 这里测试基本查询功能
-    response = client.get("/complaints/?q=product_category:electronics")
+    response = client.get("/complaints/?q=complaint_category:electronics")
     assert response.status_code in (200, 400)  # 根据实际解析器实现可能返回400
 
     if response.status_code == 200:

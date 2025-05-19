@@ -37,7 +37,7 @@ class TestComplaintAnalyzer(unittest.TestCase):
                     "complaint_time",
                     "content",
                     "user_id",
-                    "product_category",
+                    "complaint_category",
                     "reply",
                 ],
             )
@@ -54,7 +54,7 @@ class TestComplaintAnalyzer(unittest.TestCase):
             # 测试读取
             complaint = analyzer.get_complaint(complaint_id)
             self.assertEqual(complaint["content"], test_text)
-            self.assertEqual(complaint["product_category"], "电视")
+            self.assertEqual(complaint["complaint_category"], "电视")
             self.assertIsInstance(complaint["complaint_time"], str)
 
             # 测试更新
@@ -152,11 +152,11 @@ class TestComplaintAnalyzer(unittest.TestCase):
             # 只更新分类
             new_category = "冰箱"
             updated = analyzer.update_complaint(
-                complaint_id, product_category=new_category
+                complaint_id, complaint_category=new_category
             )
             self.assertTrue(updated)
             updated_complaint = analyzer.get_complaint(complaint_id)
-            self.assertEqual(updated_complaint["product_category"], new_category)
+            self.assertEqual(updated_complaint["complaint_category"], new_category)
             self.assertEqual(updated_complaint["reply"], new_reply)  # 确保其他字段不变
 
 

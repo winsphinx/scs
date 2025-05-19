@@ -40,7 +40,7 @@ class Complaint(Base):
     complaint_time = Column(DateTime)
     content = Column(String)
     user_id = Column(String)
-    product_category = Column(String)
+    complaint_category = Column(String)
 
 
 Base.metadata.create_all(bind=engine)
@@ -63,7 +63,7 @@ class ComplaintCreate(BaseModel):
     complaint_time: datetime
     content: str
     user_id: str
-    product_category: str
+    complaint_category: str
 
 
 class ComplaintResponse(ComplaintCreate):
@@ -140,8 +140,8 @@ def delete_complaint(complaint_id: int, db: Session = Depends(get_db)):
 @app.get("/statistics/", response_model=Dict[str, int])
 def get_statistics(db: Session = Depends(get_db)):
     statistics = (
-        db.query(Complaint.product_category, func.count(Complaint.id))
-        .group_by(Complaint.product_category)
+        db.query(Complaint.complaint_category, func.count(Complaint.id))
+        .group_by(Complaint.complaint_category)
         .order_by(func.count(Complaint.id).desc())
         .all()
     )
@@ -150,14 +150,15 @@ def get_statistics(db: Session = Depends(get_db)):
 
 @app.post("/simulate/", response_model=List[ComplaintCreate])
 def simulate_data(db: Session = Depends(get_db)):
-    categories = ["electronics", "clothing", "food", "home", "beauty"]
+    categories = ["电视", "冰箱", "洗衣机", "未知"]
     complaints = []
     for _ in range(10):  # 模拟10条数据
+        product = random.choice(categories)
         complaint = Complaint(
             complaint_time=datetime.now(),
-            content=f"Complaint about {random.choice(categories)}",
+            content=f"我的{product}有问题" if product != "未知" else "产品使用问题投诉",
             user_id=f"user_{random.randint(1, 100)}",
-            product_category=random.choice(categories),
+            complaint_category=product,
         )
         db.add(complaint)
         complaints.append(complaint)

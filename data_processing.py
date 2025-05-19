@@ -31,14 +31,14 @@ def clean_data(data):
             # 空值处理
             content = item.get("content", "").strip()
             user_id = item.get("user_id", "").strip()
-            product_category = item.get("product_category", "").strip()
+            complaint_category = item.get("complaint_category", "").strip()
 
             cleaned_data.append(
                 {
                     "complaint_time": complaint_time,
                     "content": content,
                     "user_id": user_id,
-                    "product_category": product_category,
+                    "complaint_category": complaint_category,
                 }
             )
         except Exception as e:
@@ -78,7 +78,7 @@ def import_data_to_db():
                 complaint_time DATETIME,
                 content TEXT,
                 user_id TEXT,
-                product_category TEXT
+                complaint_category TEXT
             )
         """
         )
@@ -87,14 +87,14 @@ def import_data_to_db():
         for item in cleaned_data:
             cursor.execute(
                 """
-                INSERT INTO complaints (complaint_time, content, user_id, product_category)
+                INSERT INTO complaints (complaint_time, content, user_id, complaint_category)
                 VALUES (?, ?, ?, ?)
             """,
                 (
                     item["complaint_time"],
                     item["content"],
                     item["user_id"],
-                    item["product_category"],
+                    item["complaint_category"],
                 ),
             )
 
@@ -110,7 +110,7 @@ def import_data_to_db():
             conn.close()
 
 
-def create_complaint(complaint_time, content, user_id, product_category):
+def create_complaint(complaint_time, content, user_id, complaint_category):
     """
     创建新的投诉记录
     """
@@ -119,10 +119,10 @@ def create_complaint(complaint_time, content, user_id, product_category):
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO complaints (complaint_time, content, user_id, product_category)
+            INSERT INTO complaints (complaint_time, content, user_id, complaint_category)
             VALUES (?, ?, ?, ?)
         """,
-            (complaint_time, content, user_id, product_category),
+            (complaint_time, content, user_id, complaint_category),
         )
         conn.commit()
         logging.info(f"成功创建投诉记录，用户ID: {user_id}")
@@ -153,7 +153,11 @@ def read_complaints():
 
 
 def update_complaint(
-    complaint_id, complaint_time=None, content=None, user_id=None, product_category=None
+    complaint_id,
+    complaint_time=None,
+    content=None,
+    user_id=None,
+    complaint_category=None,
 ):
     """
     更新投诉记录
@@ -172,9 +176,9 @@ def update_complaint(
         if user_id:
             update_fields.append("user_id = ?")
             values.append(user_id)
-        if product_category:
-            update_fields.append("product_category = ?")
-            values.append(product_category)
+        if complaint_category:
+            update_fields.append("complaint_category = ?")
+            values.append(complaint_category)
 
         if update_fields:
             values.append(complaint_id)
