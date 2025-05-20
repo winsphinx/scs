@@ -1,10 +1,12 @@
+import random
 import unittest
+from datetime import datetime
+
 from fastapi.testclient import TestClient
-from main import app, SessionLocal, Base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
-import random
+
+from main import Base, SessionLocal, app
 
 # 配置测试数据库
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"

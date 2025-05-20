@@ -1,17 +1,18 @@
-from fastapi import FastAPI, HTTPException, Depends
-from pydantic import BaseModel
+import logging
+import random
+from datetime import datetime
+from typing import Dict, List
+
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-from llm_service import ComplaintAnalyzer
+from pydantic import BaseModel
 from sqlalchemy import create_engine, func
-from sqlalchemy.orm import sessionmaker, Session
-from models import Base, Complaint
+from sqlalchemy.orm import Session, sessionmaker
 
-from datetime import datetime
-from typing import List, Dict
-import random
-import logging
+from llm_service import ComplaintAnalyzer
+from models import Base, Complaint
 
 app = FastAPI()
 # 配置中间件和静态文件
@@ -97,7 +98,7 @@ def read_complaints(
             if filter_condition:
                 logger.info(f"Parsed query condition: {filter_condition}")
                 # 使用安全的替代方案代替eval
-                from sqlalchemy import and_, or_, not_
+                from sqlalchemy import and_, not_, or_
 
                 safe_dict = {
                     "and_": and_,
