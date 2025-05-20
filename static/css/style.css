@@ -277,7 +277,7 @@ th {
     align-items: flex-end;
     /* Align items to the bottom */
     height: 100%;
-    gap: 30px;
+    gap: 40px;
     padding-left: 40px;
     /* Space for Y-axis */
     padding-right: 20px;
@@ -301,7 +301,7 @@ th {
     height: 100%;
     flex-shrink: 0;
     /* Prevent shrinking */
-    width: 40px;
+    width: 55px;
     /* Bar width */
     position: relative;
     /* Needed for absolute positioning of label */

@@ -9,7 +9,6 @@ dependencies = [
     "langchain>=0.3.25",
     "langchain-community>=0.3.24",
     "langchain-openai>=0.3.17",
-    "pytest>=8.3.5",
     "sqlalchemy>=2.0.41",
     "uvicorn>=0.34.2",
 ]

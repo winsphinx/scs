@@ -41,6 +41,7 @@ class Complaint(Base):
     content = Column(String)
     user_id = Column(String)
     complaint_category = Column(String)
+    reply = Column(String)
 
 
 Base.metadata.create_all(bind=engine)
@@ -64,6 +65,7 @@ class ComplaintCreate(BaseModel):
     content: str
     user_id: str
     complaint_category: str
+    reply: str | None = None
 
 
 class ComplaintResponse(ComplaintCreate):
@@ -83,7 +85,7 @@ def create_complaint(complaint: ComplaintCreate, db: Session = Depends(get_db)):
     return db_complaint
 
 
-@app.get("/complaints/", response_model=List[ComplaintCreate])
+@app.get("/complaints/", response_model=List[ComplaintResponse])
 def read_complaints(
     q: str = None,
     skip: int = 0,
@@ -150,7 +152,14 @@ def get_statistics(db: Session = Depends(get_db)):
 
 @app.post("/simulate/", response_model=List[ComplaintCreate])
 def simulate_data(db: Session = Depends(get_db)):
-    categories = ["电视", "冰箱", "洗衣机", "未知"]
+    categories = ["各种电视", "冰箱冰柜", "洗衣机", "未知"]
+    replies = [
+        "已处理",
+        "正在处理中",
+        "已转交相关部门",
+        None,
+        None,
+    ]  # 增加None使部分投诉无回复
     complaints = []
     for _ in range(10):  # 模拟10条数据
         product = random.choice(categories)
@@ -159,6 +168,9 @@ def simulate_data(db: Session = Depends(get_db)):
             content=f"我的{product}有问题" if product != "未知" else "产品使用问题投诉",
             user_id=f"user_{random.randint(1, 100)}",
             complaint_category=product,
+            reply=(
+                random.choice(replies) if random.random() > 0.3 else None
+            ),  # 70%概率有回复
         )
         db.add(complaint)
         complaints.append(complaint)
