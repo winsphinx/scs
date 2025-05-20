@@ -4,14 +4,14 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from llm_service import ComplaintAnalyzer
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, func
-from sqlalchemy.orm import sessionmaker, Session, declarative_base
+from sqlalchemy import create_engine, func
+from sqlalchemy.orm import sessionmaker, Session
+from models import Base, Complaint
 
 from datetime import datetime
 from typing import List, Dict
 import random
-
-from fastapi.staticfiles import StaticFiles
+import logging
 
 app = FastAPI()
 # 配置中间件和静态文件
@@ -31,18 +31,14 @@ engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+# Base 类已从 models.py 导入
 
 
-class Complaint(Base):
-    __tablename__ = "complaints"
-    id = Column(Integer, primary_key=True, index=True)
-    complaint_time = Column(DateTime)
-    content = Column(String)
-    user_id = Column(String)
-    complaint_category = Column(String)
-    reply = Column(String)
-
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 Base.metadata.create_all(bind=engine)
 
@@ -99,8 +95,25 @@ def read_complaints(
         try:
             filter_condition = analyzer.query_parser_chain.run(query=q)
             if filter_condition:
-                base_query = base_query.filter(eval(filter_condition))
+                logger.info(f"Parsed query condition: {filter_condition}")
+                # 使用安全的替代方案代替eval
+                from sqlalchemy import and_, or_, not_
+
+                safe_dict = {
+                    "and_": and_,
+                    "or_": or_,
+                    "not_": not_,
+                    "Complaint": Complaint,
+                    "datetime": datetime,
+                }
+                compiled_condition = compile(filter_condition, "<string>", "eval")
+                for name in compiled_condition.co_names:
+                    if name not in safe_dict:
+                        raise ValueError(f"Unsafe expression: {name}")
+                condition = eval(compiled_condition, {"__builtins__": None}, safe_dict)
+                base_query = base_query.filter(condition)
         except Exception as e:
+            logger.error(f"Query parsing failed: {str(e)}")
             raise HTTPException(status_code=400, detail=f"查询解析失败: {str(e)}")
 
     complaints = base_query.offset(skip).limit(limit).all()
@@ -152,28 +165,37 @@ def get_statistics(db: Session = Depends(get_db)):
 
 @app.post("/simulate/", response_model=List[ComplaintCreate])
 def simulate_data(db: Session = Depends(get_db)):
-    categories = ["各种电视", "冰箱冰柜", "洗衣机", "未知"]
+    categories = ["电视", "冰箱", "洗衣机", "未知"]
+    problems = {
+        "电视": ["屏幕有坏点", "无法开机", "遥控器失灵", "画面模糊"],
+        "冰箱": ["不制冷", "噪音大", "门封不严", "结霜严重"],
+        "洗衣机": ["不脱水", "漏水", "噪音大", "无法启动"],
+        "未知": ["产品使用问题", "售后服务问题", "质量投诉"],
+    }
     replies = [
-        "已处理",
-        "正在处理中",
-        "已转交相关部门",
+        "已处理，请检查是否解决",
+        "正在处理中，预计3个工作日内完成",
+        "已转交相关部门处理",
+        "需要更多信息，客服将联系您",
         None,
-        None,
-    ]  # 增加None使部分投诉无回复
+    ]
+
     complaints = []
-    for _ in range(10):  # 模拟10条数据
-        product = random.choice(categories)
+    for _ in range(10):
+        category = random.choice(categories)
+        problem = random.choice(problems[category])
         complaint = Complaint(
             complaint_time=datetime.now(),
-            content=f"我的{product}有问题" if product != "未知" else "产品使用问题投诉",
-            user_id=f"user_{random.randint(1, 100)}",
-            complaint_category=product,
+            content=f"我的{category}{problem}" if category != "未知" else problem,
+            user_id=f"user_{random.randint(1, 1000):04d}",
+            complaint_category=category,
             reply=(
-                random.choice(replies) if random.random() > 0.3 else None
-            ),  # 70%概率有回复
+                random.choice(replies) if random.random() > 0.7 else None
+            ),  # 30%概率有回复
         )
         db.add(complaint)
         complaints.append(complaint)
+        logger.info(f"Generated simulated complaint: {complaint.content}")
     db.commit()
     return complaints
 

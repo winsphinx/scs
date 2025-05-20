@@ -1,7 +1,7 @@
 [project]
-name = "cs"
+name = "scs"
 version = "0.1.0"
-description = "Add your description here"
+description = "Smart Customer Service"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
