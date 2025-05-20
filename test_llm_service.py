@@ -78,7 +78,7 @@ class TestComplaintAnalyzer(unittest.TestCase):
             self.assertEqual(analyzer.classify_complaint("洗衣机漏水"), "洗衣机")
             self.assertEqual(analyzer.classify_complaint("未知产品问题"), "未知")
 
-    @patch.dict(os.environ, {"LLM_MODE": "real", "API_KEY": "test"})
+    @patch.dict(os.environ, {"LLM_MODE": "enabled", "API_KEY": "test"})
     def test_llm_classification(self):
         """测试LLM模式下的分类"""
         mock_llm = MagicMock()

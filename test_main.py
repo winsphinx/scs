@@ -1,3 +1,4 @@
+import os
 import random
 import unittest
 from datetime import datetime
@@ -19,6 +20,9 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 class TestComplaintAPI(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        os.environ["LLM_MODE"] = "enabled"
+        os.environ["API_KEY"] = "dummy_key_for_test"
+
         Base.metadata.create_all(bind=engine)
         # 使用内存数据库覆盖原数据库配置
         app.dependency_overrides[SessionLocal] = TestingSessionLocal

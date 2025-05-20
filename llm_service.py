@@ -47,7 +47,7 @@ class ComplaintAnalyzer:
         self._init_db()
         self.product_patterns: Dict[str, re.Pattern] = PRODUCT_PATTERNS
         self.templates: Dict[str, str] = REPLY_TEMPLATES
-        if self.mode == "real" and self.api_key:
+        if self.mode == "enabled" and self.api_key:
             self.llm = ChatOpenAI(
                 model=self.model_name,
                 api_key=self.api_key,
@@ -91,7 +91,7 @@ class ComplaintAnalyzer:
             raise ValueError("投诉文本不能为空")
 
         logger.debug(f"开始分类投诉文本: {text[:50]}...")
-        if self.mode == "real" and self.llm:
+        if self.mode == "enabled" and self.llm:
             # Use the classification chain
             result = self.classification_chain.invoke(text)
             return result.content.strip()
@@ -121,7 +121,7 @@ class ComplaintAnalyzer:
         logger.debug(f"开始为类别'{category}'生成回复")
         if not category:
             category = self.classify_complaint(text)
-        if self.mode == "real" and self.llm:
+        if self.mode == "enabled" and self.llm:
             result = self.reply_chain.invoke({"text": text, "category": category})
             return result.content.strip()
         else:
