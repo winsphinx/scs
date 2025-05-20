@@ -73,7 +73,7 @@ class ComplaintResponse(ComplaintCreate):
     complaint_time: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 @app.post("/complaints/", response_model=ComplaintResponse)
@@ -122,7 +122,7 @@ def update_complaint(
     db_complaint = db.query(Complaint).filter(Complaint.id == complaint_id).first()
     if db_complaint is None:
         raise HTTPException(status_code=404, detail="Complaint not found")
-    for key, value in complaint.dict().items():
+    for key, value in complaint.model_dump().items():
         setattr(db_complaint, key, value)
     db.commit()
     db.refresh(db_complaint)
