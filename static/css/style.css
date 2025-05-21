@@ -110,7 +110,6 @@ button:hover {
     flex-direction: column;
     flex-grow: 1;
     min-height: 0;
-    /* Allow shrinking */
 }
 
 .list-section {
@@ -122,7 +121,6 @@ button:hover {
     flex-direction: column;
     flex-grow: 1;
     min-height: 0;
-    /* Allow shrinking */
 }
 
 .form-group {
@@ -150,13 +148,11 @@ textarea {
     flex-direction: column;
     gap: 10px;
     flex-shrink: 0;
-    /* Prevent shrinking */
 }
 
 textarea#naturalQuery {
     resize: none;
     height: calc(4 * 1.5em + 16px);
-    /* 4行固定高度（行高1.5em + 上下padding 8px*2） */
     min-height: calc(4 * 1.5em + 16px);
 }
 
@@ -173,12 +169,8 @@ textarea#naturalQuery {
 
 #complaintList {
     height: 400px;
-    /* Approximate height for 15 rows */
     overflow-y: auto;
-    /* Add vertical scrollbar */
     margin-top: 15px;
-    /* Add some space between the heading and the table */
-    /* Removed flex properties for fixed height */
 }
 
 table {
@@ -207,48 +199,29 @@ th {
     border-bottom: none;
 }
 
-/* Styles for the vertical bar chart */
 #categoryChart {
     display: flex;
     justify-content: center;
     align-items: flex-end;
     height: 300px;
-    /* Increase height to accommodate more labels */
     position: relative;
     overflow-x: auto;
-    /* Add scroll if too many bars */
     padding-bottom: 30px;
-    /* Space for x-axis labels below the line */
 }
 
 .chart-inner {
     display: flex;
     align-items: flex-end;
-    /* Align items to the bottom */
     height: 100%;
     width: 100%;
     position: relative;
 }
 
-/* Remove baseline pseudo-element */
-/*
-.chart-inner::before {
-    content: '';
-    position: absolute;
-    left: 40px;
-    right: 20px;
-    height: 1px;
-    background-color: #ccc;
-    bottom: 34px;
-    z-index: 1;
-}
-*/
 
 .chart-y-axis {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    /* Distribute labels vertically */
     height: 100%;
     padding-right: 10px;
     border-right: 1px solid #ccc;
@@ -259,37 +232,24 @@ th {
     left: 0;
     bottom: 0;
     top: 0;
-    /* Remove padding-top */
-    /* padding-top: 10px; */
 }
 
 .y-axis-label {
     height: 0;
-    /* Labels don't take vertical space */
     position: relative;
     transform: translateY(50%);
-    /* Vertically center the label on the tick mark */
 }
 
 
 .chart-bars-container {
     display: flex;
     align-items: flex-end;
-    /* Align items to the bottom */
     height: 100%;
     gap: 40px;
     padding-left: 40px;
-    /* Space for Y-axis */
     padding-right: 20px;
     box-sizing: border-box;
     border-bottom: 1px solid #ccc;
-    /* Add horizontal line at the bottom */
-    /* Remove absolute positioning */
-    /* position: relative; */
-    /* bottom: 30px; */
-    /* left: 40px; */
-    /* right: 20px; */
-    /* width: auto; */
 }
 
 .chart-bar-wrapper {
@@ -297,14 +257,10 @@ th {
     flex-direction: column;
     align-items: center;
     justify-content: flex-end;
-    /* Align content to the bottom */
     height: 100%;
     flex-shrink: 0;
-    /* Prevent shrinking */
-    width: 55px;
-    /* Bar width */
+    width: 45px;
     position: relative;
-    /* Needed for absolute positioning of label */
 }
 
 .chart-bar {
@@ -312,18 +268,15 @@ th {
     background-color: var(--secondary-color);
     transition: height 0.5s ease;
     position: relative;
-    /* Bars start from the bottom of the wrapper */
 }
 
 .chart-bar::after {
     content: attr(data-count);
     position: absolute;
     top: -20px;
-    /* Position above the bar */
     left: 50%;
     transform: translateX(-50%);
     color: var(--primary-color);
-    /* Adjust color as needed */
     font-size: 0.9em;
     font-weight: bold;
 }
@@ -332,17 +285,14 @@ th {
     font-size: 0.8em;
     color: #555;
     text-align: center;
-    word-break: break-word;
-    /* Allow long labels to wrap */
+    white-space: nowrap;
+    overflow-x: visible;
     position: absolute;
-    /* Position label absolutely */
     bottom: -20px;
-    /* Position below the baseline at 0 */
     left: 0;
     right: 0;
 }
 
-/* Remove old horizontal chart styles */
 .chart-item {
     display: none;
 }
@@ -350,43 +300,29 @@ th {
 /* Modal Styles */
 .modal {
     display: none;
-    /* Hidden by default */
     position: fixed;
-    /* Stay in place */
     z-index: 1;
-    /* Sit on top */
     left: 0;
     top: 0;
     width: 100%;
-    /* Full width */
     height: 100%;
-    /* Full height */
     overflow: auto;
-    /* Enable scroll if needed */
     background-color: rgba(0, 0, 0, 0.4);
-    /* Black w/ opacity */
     display: none;
-    /* Hidden by default */
     justify-content: center;
-    /* Center horizontally */
     align-items: center;
-    /* Center vertically */
 }
 
 .modal-content {
     background-color: #fefefe;
     margin: auto;
-    /* Auto margin for centering */
     padding: 20px;
     border: 1px solid #888;
     width: 80%;
-    /* Could be more or less, depending on screen size */
     max-width: 600px;
-    /* Max width for larger screens */
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     position: relative;
-    /* Needed for the close button */
 }
 
 .close-button {
