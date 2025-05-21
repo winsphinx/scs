@@ -308,17 +308,3 @@ class ComplaintAnalyzer:
         if self.conn:
             self.conn.close()
             self.conn = None
-
-
-if __name__ == "__main__":
-    complaint_analyzer = ComplaintAnalyzer()
-    # print(complaint_analyzer.classify_complaint("我的冰箱坏了"))
-
-    # 写入测试数据
-    test_text = "测试投诉内容 - 电视屏幕有坏点"
-    test_category = "电视"
-    test_reply = "测试回复 - 我们会尽快处理您的电视问题"
-    complaint_id = complaint_analyzer.create_complaint(
-        test_text, test_category, test_reply
-    )
-    print(f"已插入测试数据，ID: {complaint_id}")

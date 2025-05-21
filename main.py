@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from llm_service import ComplaintAnalyzer
 from models import Base, Complaint
+from config import SIMULATION_CONFIG
 
 app = FastAPI()
 # 配置中间件和静态文件
@@ -97,7 +98,7 @@ def read_complaints(
             filter_condition = analyzer.query_parser_chain.run(query=q)
             if filter_condition:
                 logger.info(f"Parsed query condition: {filter_condition}")
-                # 使用安全的替代方案代替eval
+
                 from sqlalchemy import and_, not_, or_
 
                 safe_dict = {
@@ -166,32 +167,18 @@ def get_statistics(db: Session = Depends(get_db)):
 
 @app.post("/simulate/", response_model=List[ComplaintCreate])
 def simulate_data(db: Session = Depends(get_db)):
-    categories = ["电视", "冰箱", "洗衣机", "未知"]
-    problems = {
-        "电视": ["屏幕有坏点", "无法开机", "遥控器失灵", "画面模糊"],
-        "冰箱": ["不制冷", "噪音大", "门封不严", "结霜严重"],
-        "洗衣机": ["不脱水", "漏水", "噪音大", "无法启动"],
-        "未知": ["产品使用问题", "售后服务问题", "质量投诉"],
-    }
-    replies = [
-        "已处理，请检查是否解决",
-        "正在处理中，预计3个工作日内完成",
-        "已转交相关部门处理",
-        "需要更多信息，客服将联系您",
-        None,
-    ]
-
+    config = SIMULATION_CONFIG
     complaints = []
     for _ in range(10):
-        category = random.choice(categories)
-        problem = random.choice(problems[category])
+        category = random.choice(config["categories"])
+        problem = random.choice(config["problems"][category])
         complaint = Complaint(
             complaint_time=datetime.now(),
             content=f"我的{category}{problem}" if category != "未知" else problem,
             user_id=f"user_{random.randint(1, 1000):04d}",
             complaint_category=category,
             reply=(
-                random.choice(replies) if random.random() > 0.7 else None
+                random.choice(config["replies"]) if random.random() > 0.7 else None
             ),  # 30%概率有回复
         )
         db.add(complaint)

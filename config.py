@@ -22,6 +22,24 @@ CLASSIFICATION_PROMPT = """你是一个客户服务分类专家，请严格从[�
 # 回复生成提示模板
 REPLY_PROMPT = """根据以下客户投诉文本和分类结果，生成合适的回复：\n投诉文本：{text}\n分类：{category}"""
 
+# 模拟数据配置
+SIMULATION_CONFIG = {
+    "categories": ["电视", "冰箱", "洗衣机", "未知"],
+    "problems": {
+        "电视": ["屏幕有坏点", "无法开机", "遥控器失灵", "画面模糊"],
+        "冰箱": ["不制冷", "噪音大", "门封不严", "结霜严重"],
+        "洗衣机": ["不脱水", "漏水", "噪音大", "无法启动"],
+        "未知": ["产品使用问题", "售后服务问题", "质量投诉"],
+    },
+    "replies": [
+        "已处理，请检查是否解决",
+        "正在处理中，预计3个工作日内完成",
+        "已转交相关部门处理",
+        "需要更多信息，客服将联系您",
+        None,
+    ],
+}
+
 # 查询解析提示模板
 QUERY_PARSER_PROMPT = """将用户自然语言查询转换为SQL WHERE条件（使用SQLAlchemy语法）：
 可用字段：complaint_time（datetime）, content（str）, user_id（str）, complaint_category（str）
