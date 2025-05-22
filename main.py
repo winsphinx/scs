@@ -28,7 +28,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # 数据库配置
-SQLALCHEMY_DATABASE_URL = "sqlite:///./complaints.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./data/complaints.db"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )

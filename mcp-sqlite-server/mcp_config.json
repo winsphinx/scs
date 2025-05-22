@@ -1,0 +1,11 @@
+{
+    "sqlite_mcp": {
+        "command": "python",
+        "args": [
+            "mcp-sqlite-server/server.py"
+        ],
+        "env": {
+            "DB_PATH": "../complaints.db"
+        }
+    }
+}

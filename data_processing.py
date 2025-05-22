@@ -67,7 +67,7 @@ def import_data_to_db():
         logging.info(f"清洗后的数据条数: {len(cleaned_data)}")
 
         # 连接到数据库
-        conn = sqlite3.connect("complaints.db")
+        conn = sqlite3.connect("data/complaints.db")
         cursor = conn.cursor()
 
         # 创建表（如果不存在）
@@ -115,7 +115,7 @@ def create_complaint(complaint_time, content, user_id, complaint_category):
     创建新的投诉记录
     """
     try:
-        conn = sqlite3.connect("complaints.db")
+        conn = sqlite3.connect("data/complaints.db")
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -139,7 +139,7 @@ def read_complaints():
     读取所有投诉记录
     """
     try:
-        conn = sqlite3.connect("complaints.db")
+        conn = sqlite3.connect("data/complaints.db")
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM complaints")
         complaints = cursor.fetchall()
@@ -163,7 +163,7 @@ def update_complaint(
     更新投诉记录
     """
     try:
-        conn = sqlite3.connect("complaints.db")
+        conn = sqlite3.connect("data/complaints.db")
         cursor = conn.cursor()
         update_fields = []
         values = []
@@ -200,7 +200,7 @@ def delete_complaint(complaint_id):
     删除投诉记录
     """
     try:
-        conn = sqlite3.connect("complaints.db")
+        conn = sqlite3.connect("data/complaints.db")
         cursor = conn.cursor()
         cursor.execute("DELETE FROM complaints WHERE id = ?", (complaint_id,))
         conn.commit()

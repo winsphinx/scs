@@ -42,7 +42,7 @@ class ComplaintAnalyzer:
         self.api_key = os.getenv("API_KEY")
         self.base_url = os.getenv("BASE_URL")
         self.model_name = os.getenv("MODEL_NAME")
-        self.db_path = os.getenv("DATABASE_PATH", "complaints.db")
+        self.db_path = os.getenv("DATABASE_PATH", "data/complaints.db")
         self.conn = sqlite3.connect(self.db_path)
         self._init_db()
         self.product_patterns: Dict[str, re.Pattern] = PRODUCT_PATTERNS
