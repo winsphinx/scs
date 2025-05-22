@@ -1,4 +1,12 @@
 import os
+import logging
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
 import sqlite3
 import pandas as pd
 from mcp.server.session import ServerSession
@@ -9,7 +17,10 @@ from pathlib import Path
 class SQLiteMcpServer(ServerSession):
     def __init__(self, read_stream=None, write_stream=None, init_options=None):
         super().__init__(read_stream, write_stream, init_options)
-        self.db_path = os.getenv("DB_PATH", "database.sqlite")
+        # 获取DB_PATH环境变量，确保使用绝对路径
+        self.db_path = os.path.abspath("data/complaints.db")
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        logger.info(f"Database path: {self.db_path}")
         self.conn = None
 
     def connect(self):
@@ -56,14 +67,14 @@ class SQLiteMcpServer(ServerSession):
 
         return {"table": table, "create_statement": create_stmt, "columns": columns}
 
-    def query(self, sql: str) -> Dict[str, Any]:
+    def query(self, sql: str, params=None) -> Dict[str, Any]:
         """Execute a read-only SQL query"""
         if not self.conn:
             if not self.connect():
                 return {"error": "Database connection failed"}
 
         try:
-            df = pd.read_sql_query(sql, self.conn)
+            df = pd.read_sql_query(sql, self.conn, params=params)
             return {
                 "data": df.to_dict(orient="records"),
                 "columns": list(df.columns),
@@ -72,7 +83,7 @@ class SQLiteMcpServer(ServerSession):
         except Exception as e:
             return {"error": str(e)}
 
-    def update_data(self, sql: str) -> Dict[str, Any]:
+    def update_data(self, sql: str, params=None) -> Dict[str, Any]:
         """Execute data modification query"""
         if not self.conn:
             if not self.connect():
@@ -80,7 +91,7 @@ class SQLiteMcpServer(ServerSession):
 
         try:
             cursor = self.conn.cursor()
-            cursor.execute(sql)
+            cursor.execute(sql, params or ())
             self.conn.commit()
             return {"rows_affected": cursor.rowcount, "last_rowid": cursor.lastrowid}
         except Exception as e:
@@ -134,10 +145,103 @@ class SQLiteMcpServer(ServerSession):
             "analyze_table": "Perform statistical analysis on table data",
         }
 
+    def close(self):
+        """Close database connection"""
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+
 
 if __name__ == "__main__":
-    server = SQLiteMcpServer()
-    from mcp.server.stdio import stdio_server
+    import sys
+    import json
 
-    print("MCP Server started (stdio mode)")
-    stdio_server(server)
+    server = SQLiteMcpServer()
+    logger.info("MCP Server started (stdio mode)")
+
+    # 简单的stdio服务器实现
+    while True:
+        try:
+            line = sys.stdin.readline()
+            if not line:
+                break
+
+            try:
+                request = json.loads(line)
+                method = request.get("method")
+                params = request.get("params", {})
+
+                if method == "call_tool":
+                    tool_name = params.get("name")
+                    args = params.get("arguments", {})
+
+                    # 显式处理每种工具调用
+                    if tool_name == "query":
+                        result = server.query(args.get("sql"), args.get("params"))
+                        response = {
+                            "jsonrpc": "2.0",
+                            "result": {
+                                "content": [
+                                    {
+                                        "text": result.get("data", []),
+                                        "columns": result.get("columns", []),
+                                    }
+                                ]
+                            },
+                            "id": request.get("id"),
+                        }
+                    elif tool_name == "update_data":
+                        result = server.update_data(args.get("sql"), args.get("params"))
+                        response = {
+                            "jsonrpc": "2.0",
+                            "result": {
+                                "content": [
+                                    {
+                                        "text": {
+                                            "rows_affected": result.get(
+                                                "rows_affected", 0
+                                            ),
+                                            "last_rowid": result.get("last_rowid", 0),
+                                        }
+                                    }
+                                ]
+                            },
+                            "id": request.get("id"),
+                        }
+                    else:
+                        response = {
+                            "jsonrpc": "2.0",
+                            "error": {
+                                "code": -32601,
+                                "message": f"Unknown tool: {tool_name}",
+                            },
+                            "id": request.get("id"),
+                        }
+                else:
+                    response = {
+                        "jsonrpc": "2.0",
+                        "error": {"code": -32601, "message": "Method not found"},
+                        "id": request.get("id"),
+                    }
+
+                sys.stdout.write(json.dumps(response) + "\n")
+                sys.stdout.flush()
+
+            except Exception as e:
+                logger.error(f"Error handling request: {str(e)}")
+                response = {
+                    "jsonrpc": "2.0",
+                    "error": {"code": -32603, "message": str(e)},
+                    "id": request.get("id") if "request" in locals() else None,
+                }
+                sys.stdout.write(json.dumps(response) + "\n")
+                sys.stdout.flush()
+
+        except KeyboardInterrupt:
+            break
+        except Exception as e:
+            logger.error(f"Server error: {str(e)}")
+            continue
+
+    server.close()
+    logger.info("MCP Server stopped")

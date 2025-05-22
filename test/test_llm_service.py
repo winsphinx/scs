@@ -9,39 +9,36 @@ from llm_service import ComplaintAnalyzer
 
 class TestComplaintAnalyzer(unittest.TestCase):
     def setUp(self):
-        # 创建临时数据库
+        # 创建临时数据库路径
         self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DATABASE_PATH"] = self.db_path
+        os.environ["DB_PATH"] = self.db_path
 
     def tearDown(self):
-        # 确保关闭所有数据库连接
-        if hasattr(self, "analyzer"):
-            self.analyzer.conn.close()
-            self.analyzer.conn = None
+        # 清理临时文件
         os.close(self.db_fd)
         try:
             os.unlink(self.db_path)
-        except PermissionError:
+        except (PermissionError, FileNotFoundError):
             pass  # 如果文件已被删除或无法访问则忽略
-        del os.environ["DATABASE_PATH"]
+        if "DB_PATH" in os.environ:
+            del os.environ["DB_PATH"]
 
     def test_db_initialization(self):
         """测试数据库表结构初始化"""
         with ComplaintAnalyzer() as analyzer:
-            cursor = analyzer.conn.cursor()
-            cursor.execute("PRAGMA table_info(complaints)")
-            columns = [col[1] for col in cursor.fetchall()]
-            self.assertListEqual(
-                columns,
-                [
-                    "id",
-                    "complaint_time",
-                    "content",
-                    "user_id",
-                    "complaint_category",
-                    "reply",
-                ],
-            )
+            # 使用 MCP 查询验证表结构
+            result = analyzer.mcp_client.query("PRAGMA table_info(complaints)")
+            self.assertNotIn("error", result)
+            columns = [col["name"] for col in result["data"]]
+            expected_columns = [
+                "id",
+                "complaint_time",
+                "content",
+                "user_id",
+                "complaint_category",
+                "reply",
+            ]
+            self.assertEqual(set(columns), set(expected_columns))
 
     def test_complaint_lifecycle(self):
         """测试完整的CRUD流程"""
@@ -115,9 +112,10 @@ class TestComplaintAnalyzer(unittest.TestCase):
         analyzer = ComplaintAnalyzer()
         # 在上下文中连接可用
         with analyzer as ctx_analyzer:
-            ctx_analyzer.conn.execute("SELECT 1")
+            result = ctx_analyzer.mcp_client.query("SELECT 1")
+            self.assertNotIn("error", result)
         # 退出上下文后连接已关闭
-        self.assertIsNone(ctx_analyzer.conn)
+        self.assertIsNone(ctx_analyzer.mcp_client.conn)
 
     def test_template_reply(self):
         """测试模板回复生成"""

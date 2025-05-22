@@ -1,8 +1,8 @@
 import logging
 import os
 import re
-import sqlite3
 from typing import Dict, Optional, Tuple
+from mcp_sqlite_server.server import SQLiteMcpServer
 
 # 配置日志
 logging.basicConfig(
@@ -42,8 +42,8 @@ class ComplaintAnalyzer:
         self.api_key = os.getenv("API_KEY")
         self.base_url = os.getenv("BASE_URL")
         self.model_name = os.getenv("MODEL_NAME")
-        self.db_path = os.getenv("DATABASE_PATH", "data/complaints.db")
-        self.conn = sqlite3.connect(self.db_path)
+        self.db_path = os.getenv("DB_PATH", "data/complaints.db")
+        self.mcp_client = SQLiteMcpServer()
         self._init_db()
         self.product_patterns: Dict[str, re.Pattern] = PRODUCT_PATTERNS
         self.templates: Dict[str, str] = REPLY_TEMPLATES
@@ -148,9 +148,7 @@ class ComplaintAnalyzer:
 
     def _init_db(self):
         """初始化数据库表结构"""
-        cursor = self.conn.cursor()
-        cursor.execute(
-            """
+        create_table_sql = """
             CREATE TABLE IF NOT EXISTS complaints (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 complaint_time DATETIME NOT NULL,
@@ -160,8 +158,9 @@ class ComplaintAnalyzer:
                 reply TEXT
             )
         """
-        )
-        self.conn.commit()
+        result = self.mcp_client.update_data(create_table_sql)
+        if "error" in result:
+            raise RuntimeError(f"初始化数据库失败: {result['error']}")
 
     def create_complaint(self, text: str, category: str, reply: str) -> int:
         """创建新的投诉记录
@@ -175,22 +174,16 @@ class ComplaintAnalyzer:
             新创建的投诉记录ID
 
         Raises:
-            sqlite3.Error: 数据库操作失败时抛出
+            RuntimeError: 数据库操作失败时抛出
         """
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute(
-                """
-                INSERT INTO complaints (content, complaint_category, reply, complaint_time, user_id)
-                VALUES (?, ?, ?, CURRENT_TIMESTAMP, 'anonymous')
-            """,
-                (text, category, reply),
-            )
-            self.conn.commit()
-            return cursor.lastrowid
-        except sqlite3.Error as e:
-            self.conn.rollback()
-            raise sqlite3.Error(f"创建投诉记录失败: {e}")
+        insert_sql = """
+            INSERT INTO complaints (content, complaint_category, reply, complaint_time, user_id)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP, 'anonymous')
+        """
+        result = self.mcp_client.update_data(insert_sql, (text, category, reply))
+        if "error" in result:
+            raise RuntimeError(f"创建投诉记录失败: {result['error']}")
+        return result.get("last_rowid", 0)
 
     def get_complaint(self, complaint_id: int) -> dict | None:
         """获取单个投诉记录
@@ -202,31 +195,25 @@ class ComplaintAnalyzer:
             包含投诉信息的字典，如果不存在则返回None
 
         Raises:
-            sqlite3.Error: 数据库操作失败时抛出
+            RuntimeError: 数据库操作失败时抛出
         """
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute(
-                """
-                SELECT id, content, complaint_category, reply, complaint_time
-                FROM complaints WHERE id = ?
-            """,
-                (complaint_id,),
-            )
-            row = cursor.fetchone()
-            return (
-                {
-                    "id": row[0],
-                    "content": row[1],
-                    "complaint_category": row[2],
-                    "reply": row[3],
-                    "complaint_time": row[4],
-                }
-                if row
-                else None
-            )
-        except sqlite3.Error as e:
-            raise sqlite3.Error(f"查询投诉记录失败: {e}")
+        query_sql = """
+            SELECT id, content, complaint_category, reply, complaint_time
+            FROM complaints WHERE id = ?
+        """
+        result = self.mcp_client.query(query_sql, (complaint_id,))
+        if "error" in result:
+            raise RuntimeError(f"查询投诉记录失败: {result['error']}")
+        if not result.get("data"):
+            return None
+        row = result["data"][0]
+        return {
+            "id": row["id"],
+            "content": row["content"],
+            "complaint_category": row["complaint_category"],
+            "reply": row["reply"],
+            "complaint_time": row["complaint_time"],
+        }
 
     def update_complaint(
         self,
@@ -247,38 +234,34 @@ class ComplaintAnalyzer:
             是否成功更新记录
 
         Raises:
-            sqlite3.Error: 数据库操作失败时抛出
+            RuntimeError: 数据库操作失败时抛出
             ValueError: 当没有提供任何更新字段时抛出
         """
         if not any([content, complaint_category, reply]):
             raise ValueError("至少需要提供一个更新字段")
 
-        try:
-            updates = []
-            params = []
-            if content is not None:
-                updates.append("content = ?")
-                params.append(content)
-            if complaint_category is not None:
-                updates.append("complaint_category = ?")
-                params.append(complaint_category)
-            if reply is not None:
-                updates.append("reply = ?")
-                params.append(reply)
+        updates = []
+        params = []
+        if content is not None:
+            updates.append("content = ?")
+            params.append(content)
+        if complaint_category is not None:
+            updates.append("complaint_category = ?")
+            params.append(complaint_category)
+        if reply is not None:
+            updates.append("reply = ?")
+            params.append(reply)
 
-            params.append(complaint_id)
-            query = f"""
-                UPDATE complaints
-                SET {', '.join(updates)}
-                WHERE id = ?
-            """
-            cursor = self.conn.cursor()
-            cursor.execute(query, params)
-            self.conn.commit()
-            return cursor.rowcount > 0
-        except sqlite3.Error as e:
-            self.conn.rollback()
-            raise sqlite3.Error(f"更新投诉记录失败: {e}")
+        params.append(complaint_id)
+        query = f"""
+            UPDATE complaints
+            SET {', '.join(updates)}
+            WHERE id = ?
+        """
+        result = self.mcp_client.update_data(query, params)
+        if "error" in result:
+            raise RuntimeError(f"更新投诉记录失败: {result['error']}")
+        return result.get("rows_affected", 0) > 0
 
     def delete_complaint(self, complaint_id: int) -> bool:
         """删除投诉记录
@@ -290,21 +273,21 @@ class ComplaintAnalyzer:
             是否成功删除记录
 
         Raises:
-            sqlite3.Error: 数据库操作失败时抛出
+            RuntimeError: 数据库操作失败时抛出
         """
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("DELETE FROM complaints WHERE id = ?", (complaint_id,))
-            self.conn.commit()
-            return cursor.rowcount > 0
-        except sqlite3.Error as e:
-            self.conn.rollback()
-            raise sqlite3.Error(f"删除投诉记录失败: {e}")
+        result = self.mcp_client.update_data(
+            "DELETE FROM complaints WHERE id = ?", (complaint_id,)
+        )
+        if "error" in result:
+            raise RuntimeError(f"删除投诉记录失败: {result['error']}")
+        return result.get("rows_affected", 0) > 0
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.conn:
-            self.conn.close()
-            self.conn = None
+        if hasattr(self, "mcp_client") and hasattr(self.mcp_client, "close"):
+            try:
+                self.mcp_client.close()
+            except Exception as e:
+                logger.error(f"Error closing MCP client: {e}")
