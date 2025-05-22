@@ -198,25 +198,45 @@ async function handleSearch() {
     const outputDiv = document.getElementById('llmOutput');
 
     try {
-        const response = await fetch(`${API_BASE}/query`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ query })
-        });
+        const response = await fetch(`${API_BASE}/complaints/?q=${encodeURIComponent(query)}`);
 
         if (!response.ok) throw new Error('查询失败');
 
-        const result = await response.json();
+        const complaints = await response.json();
         outputDiv.innerHTML = `
             <div class="query-result">
-                <h3>查询结果：</h3>
-                <p>解析条件：${result.condition}</p>
-                <p>匹配记录：${result.count} 条</p>
-                <pre>${JSON.stringify(result.results, null, 2)}</pre>
+                <h3>查询解析：</h3>
+                <p>匹配记录：${complaints.length} 条</p>
             </div>
         `;
+
+        // 更新投诉列表显示查询结果
+        const listContainer = document.getElementById('complaintList');
+        let tableHtml = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>产品类别</th>
+                        <th>用户ID</th>
+                        <th>投诉时间</th>
+                        <th>投诉内容</th>
+                        <th>回复状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${complaints.map(complaint => `
+                        <tr ondblclick="showComplaintDetails('${complaint.complaint_category}', '${complaint.user_id}', '${new Date(complaint.complaint_time).toLocaleString()}', '${complaint.content.replace(/'/g, "\\'").replace(/\n/g, "\\n")}', '${complaint.reply ? complaint.reply.replace(/'/g, "\\'").replace(/\n/g, "\\n") : ''}')">
+                            <td>${complaint.complaint_category}</td>
+                            <td>${complaint.user_id}</td>
+                            <td>${new Date(complaint.complaint_time).toLocaleString()}</td>
+                            <td>${complaint.content}</td>
+                            <td>${complaint.reply || '未回复'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        listContainer.innerHTML = tableHtml;
     } catch (error) {
         outputDiv.innerHTML = `<div class="error">错误：${error.message}</div>`;
     }

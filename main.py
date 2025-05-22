@@ -95,7 +95,7 @@ def read_complaints(
 
     if q:
         try:
-            filter_condition = analyzer.query_parser_chain.run(query=q)
+            filter_condition = analyzer.query_parser_chain.invoke({"query": q}).content
             if filter_condition:
                 logger.info(f"Parsed query condition: {filter_condition}")
 
@@ -107,6 +107,12 @@ def read_complaints(
                     "not_": not_,
                     "Complaint": Complaint,
                     "datetime": datetime,
+                    "complaint_category": Complaint.complaint_category,
+                    "content": Complaint.content,
+                    "user_id": Complaint.user_id,
+                    "complaint_time": Complaint.complaint_time,
+                    "reply": Complaint.reply,
+                    "contains": lambda field, value: field.contains(value),
                 }
                 compiled_condition = compile(filter_condition, "<string>", "eval")
                 for name in compiled_condition.co_names:
