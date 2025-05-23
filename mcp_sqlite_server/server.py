@@ -15,10 +15,18 @@ from pathlib import Path
 
 
 class SQLiteMcpServer(ServerSession):
-    def __init__(self, read_stream=None, write_stream=None, init_options=None):
+    def __init__(
+        self,
+        read_stream=None,
+        write_stream=None,
+        init_options=None,
+        db_path: Optional[str] = None,
+    ):
         super().__init__(read_stream, write_stream, init_options)
-        # 获取DB_PATH环境变量，确保使用绝对路径
-        self.db_path = os.path.abspath("data/complaints.db")
+        if db_path:
+            self.db_path = os.path.abspath(db_path)
+        else:
+            self.db_path = os.path.abspath(os.environ.get("DB_PATH"))
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         logger.info(f"Database path: {self.db_path}")
         self.conn = None
@@ -63,7 +71,8 @@ class SQLiteMcpServer(ServerSession):
             )
 
         cursor.execute(f"SELECT sql FROM sqlite_master WHERE name='{table}'")
-        create_stmt = cursor.fetchone()[0]
+        row = cursor.fetchone()
+        create_stmt = row[0] if row else ""
 
         return {"table": table, "create_statement": create_stmt, "columns": columns}
 
