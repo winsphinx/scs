@@ -2,7 +2,8 @@ import logging
 import os
 import re
 from typing import Dict, Optional, Tuple
-from mcp_sqlite_server.server import SQLiteMcpServer
+
+from mcp_sqlite_server.server import ServerWrapper
 
 # 配置日志
 logging.basicConfig(
@@ -43,7 +44,7 @@ class ComplaintAnalyzer:
         self.base_url = os.getenv("BASE_URL")
         self.model_name = os.getenv("MODEL_NAME")
         self.db_path = os.getenv("DB_PATH", "data/complaints.db")
-        self.mcp_client = SQLiteMcpServer()
+        self.mcp_client = ServerWrapper()
         self._init_db()
         self.product_patterns: Dict[str, re.Pattern] = PRODUCT_PATTERNS
         self.templates: Dict[str, str] = REPLY_TEMPLATES
@@ -158,7 +159,7 @@ class ComplaintAnalyzer:
                 reply TEXT
             )
         """
-        result = self.mcp_client.update_data(create_table_sql)
+        result = self.mcp_client.call_tool("create_table", {"query": create_table_sql})
         if "error" in result:
             raise RuntimeError(f"初始化数据库失败: {result['error']}")
 
@@ -180,7 +181,9 @@ class ComplaintAnalyzer:
             INSERT INTO complaints (content, complaint_category, reply, complaint_time, user_id)
             VALUES (?, ?, ?, CURRENT_TIMESTAMP, 'anonymous')
         """
-        result = self.mcp_client.update_data(insert_sql, (text, category, reply))
+        result = self.mcp_client.call_tool(
+            "write_query", {"query": insert_sql, "params": [text, category, reply]}
+        )
         if "error" in result:
             raise RuntimeError(f"创建投诉记录失败: {result['error']}")
         return result.get("last_rowid", 0)
@@ -201,7 +204,9 @@ class ComplaintAnalyzer:
             SELECT id, content, complaint_category, reply, complaint_time
             FROM complaints WHERE id = ?
         """
-        result = self.mcp_client.query(query_sql, (complaint_id,))
+        result = self.mcp_client.call_tool(
+            "read_query", {"query": query_sql, "params": [complaint_id]}
+        )
         if "error" in result:
             raise RuntimeError(f"查询投诉记录失败: {result['error']}")
         if not result.get("data"):
@@ -258,7 +263,9 @@ class ComplaintAnalyzer:
             SET {', '.join(updates)}
             WHERE id = ?
         """
-        result = self.mcp_client.update_data(query, params)
+        result = self.mcp_client.call_tool(
+            "write_query", {"query": query, "params": params}
+        )
         if "error" in result:
             raise RuntimeError(f"更新投诉记录失败: {result['error']}")
         return result.get("rows_affected", 0) > 0
@@ -275,8 +282,9 @@ class ComplaintAnalyzer:
         Raises:
             RuntimeError: 数据库操作失败时抛出
         """
-        result = self.mcp_client.update_data(
-            "DELETE FROM complaints WHERE id = ?", (complaint_id,)
+        result = self.mcp_client.call_tool(
+            "write_query",
+            {"query": "DELETE FROM complaints WHERE id = ?", "params": [complaint_id]},
         )
         if "error" in result:
             raise RuntimeError(f"删除投诉记录失败: {result['error']}")

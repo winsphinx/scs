@@ -4,17 +4,53 @@ import unittest
 from datetime import datetime
 
 from fastapi.testclient import TestClient
+from models import Base
+from main import app
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from main import Base, SessionLocal, app
-
 # 配置测试数据库
+# 使用SQLite内存数据库替代MCP连接
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# 创建测试表结构
+Base.metadata.create_all(bind=engine)
+
+
+# 模拟MCP客户端
+class MockMCPClient:
+    def call_tool(self, tool_name, params):
+        if tool_name == "read_query":
+            with TestingSessionLocal() as session:
+                result = (
+                    session.execute(params["query"], params.get("params", []))
+                    .mappings()
+                    .all()
+                )
+                return {"data": [dict(row) for row in result]}
+        elif tool_name in ("write_query", "create_table"):
+            with TestingSessionLocal() as session:
+                result = session.execute(params["query"], params.get("params", []))
+                session.commit()
+                return {
+                    "data": [
+                        {
+                            "affected_rows": result.rowcount,
+                            "last_rowid": result.lastrowid or 0,
+                        }
+                    ]
+                }
+        return {"error": "Unknown tool"}
+
+
+# 替换main.py中的mcp_client
+import main
+
+main.mcp_client = MockMCPClient()
 
 
 class TestComplaintAPI(unittest.TestCase):
@@ -24,8 +60,6 @@ class TestComplaintAPI(unittest.TestCase):
         os.environ["API_KEY"] = "dummy_key_for_test"
 
         Base.metadata.create_all(bind=engine)
-        # 使用内存数据库覆盖原数据库配置
-        app.dependency_overrides[SessionLocal] = TestingSessionLocal
         cls.client = TestClient(app)
 
     @classmethod

@@ -1,7 +1,8 @@
-import unittest
 import os
 import shutil
 import sqlite3
+import unittest
+
 from mcp_sqlite_server.server import SQLiteMcpServer
 
 

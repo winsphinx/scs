@@ -1,10 +1,10 @@
-import logging
-import random
-import os
-import subprocess
 import json
+import logging
+import os
+import random
+import subprocess
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,8 +12,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from llm_service import ComplaintAnalyzer
 from config import SIMULATION_CONFIG
+from llm_service import ComplaintAnalyzer
 
 app = FastAPI()
 
@@ -76,7 +76,12 @@ class MCPClient:
                     break
                 response_lines.append(line)
                 try:
-                    return json.loads("".join(response_lines))
+                    response = json.loads("".join(response_lines))
+                    if "result" in response:
+                        return {"data": response["result"]}
+                    elif "error" in response:
+                        return {"error": response["error"]}
+                    return response
                 except json.JSONDecodeError:
                     continue
 
@@ -91,19 +96,18 @@ mcp_client = MCPClient()
 
 def execute_mcp_query(sql: str, params=None):
     """通过MCP服务器执行查询"""
-    result = mcp_client.call_tool("query", {"sql": sql, "params": params or []})
+    result = mcp_client.call_tool("read_query", {"query": sql, "params": params or []})
     if "error" in result:
         logger.error(f"MCP query error: {result['error']}")
         return {"error": result["error"]}
 
     # 解析MCP服务器返回的数据格式
-    data = []
-    if "content" in result and isinstance(result["content"], list):
-        for item in result["content"]:
-            if "text" in item and isinstance(item["text"], list):
-                data.extend(item["text"])
-
-    return {"data": data, "columns": list(data[0].keys()) if data else []}
+    if "data" in result and isinstance(result["data"], list):
+        return {
+            "data": result["data"],
+            "columns": list(result["data"][0].keys()) if result["data"] else [],
+        }
+    return {"data": [], "columns": []}
 
 
 def execute_mcp_update(sql: str, params=None):
@@ -117,8 +121,13 @@ def execute_mcp_update(sql: str, params=None):
             else:
                 processed_params.append(param)
 
+    if sql.strip().upper().startswith("CREATE TABLE"):
+        tool_name = "create_table"
+    else:
+        tool_name = "write_query"
+
     result = mcp_client.call_tool(
-        "update_data", {"sql": sql, "params": processed_params or []}
+        tool_name, {"query": sql, "params": processed_params or []}
     )
 
     if "error" in result:
@@ -126,16 +135,13 @@ def execute_mcp_update(sql: str, params=None):
         return {"error": result["error"]}
 
     # 解析MCP服务器返回的数据格式
-    rows_affected = 0
-    last_rowid = 0
-    if "content" in result and isinstance(result["content"], list):
-        for item in result["content"]:
-            if "text" in item and isinstance(item["text"], dict):
-                rows_affected = item["text"].get("rows_affected", 0)
-                last_rowid = item["text"].get("last_rowid", 0)
-                break
-
-    return {"rows_affected": rows_affected, "last_rowid": last_rowid}
+    if "data" in result and isinstance(result["data"], list):
+        if result["data"] and isinstance(result["data"][0], dict):
+            return {
+                "rows_affected": result["data"][0].get("affected_rows", 0),
+                "last_rowid": result["data"][0].get("last_rowid", 0),
+            }
+    return {"rows_affected": 0, "last_rowid": 0}
 
 
 # 初始化数据库表
