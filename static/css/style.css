@@ -90,7 +90,7 @@ button:hover {
 
 .content {
     display: grid;
-    grid-template-columns: 1fr 2fr;
+    grid-template-columns: 1fr 3fr;
     gap: 30px;
 }
 
@@ -167,10 +167,45 @@ textarea#naturalQuery {
     min-height: 100px;
 }
 
-#complaintList {
+.complaint-table-container {
     height: 400px;
+    /* 设置容器固定高度 */
     overflow-y: auto;
+    /* 垂直滚动 */
     margin-top: 15px;
+    border: 1px solid #ddd;
+    /* 添加边框 */
+    border-radius: 8px;
+    /* 圆角 */
+}
+
+.complaint-table {
+    width: 100%;
+    border-collapse: collapse;
+    /* margin-top: 20px; */
+    /* 移除此行，因为容器已经有margin-top */
+}
+
+.complaint-table thead {
+    position: sticky;
+    /* 固定表头 */
+    top: 0;
+    background-color: #f2f2f2;
+    z-index: 10;
+    /* 确保表头在滚动内容之上 */
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+    /* 添加阴影效果 */
+}
+
+.complaint-table th,
+.complaint-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+}
+
+.complaint-table th {
+    background-color: #f2f2f2;
 }
 
 table {
@@ -301,7 +336,7 @@ th {
 .modal {
     display: none;
     position: fixed;
-    z-index: 1;
+    z-index: 100;
     left: 0;
     top: 0;
     width: 100%;

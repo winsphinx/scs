@@ -43,32 +43,17 @@ async function loadComplaints() {
         const response = await fetch(`${API_BASE}/complaints/`);
         const data = await response.json();
 
-        const listContainer = document.getElementById('complaintList');
-        let tableHtml = `
-            <table>
-                <thead>
-                    <tr>
-                        <th>产品类别</th>
-                        <th>用户</th>
-                        <th>投诉时间</th>
-                        <th>投诉内容</th>
-                        <th>回复状态</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${data.map(complaint => `
-                        <tr ondblclick="showComplaintDetails('${complaint.complaint_category}', '${complaint.user_id}', '${new Date(complaint.complaint_time).toLocaleString()}', '${complaint.content.replace(/'/g, "\\'").replace(/\n/g, "\\n")}', '${complaint.reply ? complaint.reply.replace(/'/g, "\\'").replace(/\n/g, "\\n") : ''}')">
-                            <td>${complaint.complaint_category}</td>
-                            <td>${complaint.user_id}</td>
-                            <td>${new Date(complaint.complaint_time).toLocaleString()}</td>
-                            <td>${complaint.content}</td>
-                            <td>${complaint.reply || '未回复'}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
-        listContainer.innerHTML = tableHtml;
+        const tbody = document.getElementById('complaintList');
+        tbody.innerHTML = data.map(complaint => `
+            <tr ondblclick="showComplaintDetails('${complaint.complaint_category}', '${complaint.user_id}', '${new Date(complaint.complaint_time).toLocaleString()}', '${complaint.content.replace(/'/g, "\\'").replace(/\n/g, "\\n")}', '${complaint.reply ? complaint.reply.replace(/'/g, "\\'").replace(/\n/g, "\\n") : ''}')">
+                <td>${complaint.complaint_category}</td>
+                <td>${complaint.user_id}</td>
+                <td>${new Date(complaint.complaint_time).toLocaleString()}</td>
+                <td>${complaint.content}</td>
+                <td>${complaint.reply || '未回复'}</td>
+                <td><button onclick="showComplaintDetails('${complaint.complaint_category}', '${complaint.user_id}', '${new Date(complaint.complaint_time).toLocaleString()}', '${complaint.content.replace(/'/g, "\\'").replace(/\n/g, "\\n")}', '${complaint.reply ? complaint.reply.replace(/'/g, "\\'").replace(/\n/g, "\\n") : ''}')">查看</button></td>
+            </tr>
+        `).join('');
     } catch (error) {
         console.error('加载投诉列表失败:', error);
     }
@@ -211,32 +196,17 @@ async function handleSearch() {
         `;
 
         // 更新投诉列表显示查询结果
-        const listContainer = document.getElementById('complaintList');
-        let tableHtml = `
-            <table>
-                <thead>
-                    <tr>
-                        <th>产品类别</th>
-                        <th>用户</th>
-                        <th>投诉时间</th>
-                        <th>投诉内容</th>
-                        <th>回复状态</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${complaints.map(complaint => `
-                        <tr ondblclick="showComplaintDetails('${complaint.complaint_category}', '${complaint.user_id}', '${new Date(complaint.complaint_time).toLocaleString()}', '${complaint.content.replace(/'/g, "\\'").replace(/\n/g, "\\n")}', '${complaint.reply ? complaint.reply.replace(/'/g, "\\'").replace(/\n/g, "\\n") : ''}')">
-                            <td>${complaint.complaint_category}</td>
-                            <td>${complaint.user_id}</td>
-                            <td>${new Date(complaint.complaint_time).toLocaleString()}</td>
-                            <td>${complaint.content}</td>
-                            <td>${complaint.reply || '未回复'}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
-        listContainer.innerHTML = tableHtml;
+        const tbody = document.getElementById('complaintList');
+        tbody.innerHTML = complaints.map(complaint => `
+            <tr ondblclick="showComplaintDetails('${complaint.complaint_category}', '${complaint.user_id}', '${new Date(complaint.complaint_time).toLocaleString()}', '${complaint.content.replace(/'/g, "\\'").replace(/\n/g, "\\n")}', '${complaint.reply ? complaint.reply.replace(/'/g, "\\'").replace(/\n/g, "\\n") : ''}')">
+                <td>${complaint.complaint_category}</td>
+                <td>${complaint.user_id}</td>
+                <td>${new Date(complaint.complaint_time).toLocaleString()}</td>
+                <td>${complaint.content}</td>
+                <td>${complaint.reply || '未回复'}</td>
+                <td><button onclick="showComplaintDetails('${complaint.complaint_category}', '${complaint.user_id}', '${new Date(complaint.complaint_time).toLocaleString()}', '${complaint.content.replace(/'/g, "\\'").replace(/\n/g, "\\n")}', '${complaint.reply ? complaint.reply.replace(/'/g, "\\'").replace(/\n/g, "\\n") : ''}')">查看</button></td>
+            </tr>
+        `).join('');
     } catch (error) {
         outputDiv.innerHTML = `<div class="error">错误：${error.message}</div>`;
     }
