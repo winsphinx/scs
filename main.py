@@ -1,7 +1,7 @@
 import logging
 import random
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -68,7 +68,6 @@ class ComplaintCreate(BaseModel):
 
 class ComplaintResponse(ComplaintCreate):
     id: int
-    complaint_time: datetime
 
     class Config:
         from_attributes = True
@@ -85,7 +84,7 @@ def create_complaint(complaint: ComplaintCreate, db: Session = Depends(get_db)):
 
 @app.get("/complaints/", response_model=List[ComplaintResponse])
 def read_complaints(
-    q: str = None,
+    q: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -114,7 +113,9 @@ def read_complaints(
                     "reply": Complaint.reply,
                     "contains": lambda field, value: field.contains(value),
                 }
-                compiled_condition = compile(filter_condition, "<string>", "eval")
+                if not isinstance(filter_condition, str):
+                    raise ValueError("Filter condition must be a string")
+                compiled_condition = compile(str(filter_condition), "<string>", "eval")
                 for name in compiled_condition.co_names:
                     if name not in safe_dict:
                         raise ValueError(f"Unsafe expression: {name}")
@@ -168,7 +169,7 @@ def get_statistics(db: Session = Depends(get_db)):
         .order_by(func.count(Complaint.id).desc())
         .all()
     )
-    return dict(statistics)
+    return {category: count for category, count in statistics}
 
 
 @app.post("/simulate/", response_model=List[ComplaintCreate])

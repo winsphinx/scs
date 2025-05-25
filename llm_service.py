@@ -35,7 +35,7 @@ class ComplaintAnalyzer:
         """初始化投诉分析器
 
         Args:
-            db_path: 数据库文件路径。如果未提供，则从环境变量DATABASE获取。
+            db_path: 数据库文件路径。
 
         Raises:
             ValueError: 当必需的环境变量缺失时抛出
@@ -46,9 +46,9 @@ class ComplaintAnalyzer:
         self.api_key = os.getenv("API_KEY")
         self.base_url = os.getenv("BASE_URL")
         self.model_name = os.getenv("MODEL_NAME")
-        self.db_path = db_path if db_path else os.getenv("DATABASE")
+        self.db_path = "./data/complaints.db"
         if not self.db_path:
-            raise ValueError("数据库路径未提供且DATABASE环境变量未设置")
+            raise ValueError("数据库路径未提供。")
         self.conn = sqlite3.connect(self.db_path)
         self._init_db()
         self.product_patterns: Dict[str, re.Pattern] = PRODUCT_PATTERNS

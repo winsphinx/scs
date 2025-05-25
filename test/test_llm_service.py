@@ -10,7 +10,6 @@ class TestComplaintAnalyzer(unittest.TestCase):
     def setUp(self):
         # 创建临时数据库
         self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DATABASE"] = self.db_path
 
     def tearDown(self):
         # 清理临时数据库文件和环境变量
@@ -19,8 +18,6 @@ class TestComplaintAnalyzer(unittest.TestCase):
             os.unlink(self.db_path)
         except PermissionError:
             pass  # 如果文件已被删除或无法访问则忽略
-        if "DATABASE" in os.environ:
-            del os.environ["DATABASE"]
 
     def test_db_initialization(self):
         """测试数据库表结构初始化"""
