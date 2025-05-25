@@ -49,7 +49,7 @@ async function loadComplaints() {
                 <thead>
                     <tr>
                         <th>产品类别</th>
-                        <th>用户ID</th>
+                        <th>用户</th>
                         <th>投诉时间</th>
                         <th>投诉内容</th>
                         <th>回复状态</th>
@@ -217,7 +217,7 @@ async function handleSearch() {
                 <thead>
                     <tr>
                         <th>产品类别</th>
-                        <th>用户ID</th>
+                        <th>用户</th>
                         <th>投诉时间</th>
                         <th>投诉内容</th>
                         <th>回复状态</th>

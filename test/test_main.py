@@ -20,9 +20,6 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 class TestComplaintAPI(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        os.environ["LLM_MODE"] = os.getenv("LLM_MODE", "mock")
-        os.environ["API_KEY"] = os.getenv("API_KEY")
-
         Base.metadata.create_all(bind=engine)
         # 使用内存数据库覆盖原数据库配置
         app.dependency_overrides[SessionLocal] = TestingSessionLocal

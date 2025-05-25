@@ -3,10 +3,11 @@ import os
 import re
 import sqlite3
 from typing import Dict, Optional, Tuple
-
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
+from langchain_core.messages import BaseMessage
+from pydantic import SecretStr
 
 # 配置日志
 logging.basicConfig(
@@ -30,8 +31,11 @@ except ImportError as e:
 
 
 class ComplaintAnalyzer:
-    def __init__(self):
+    def __init__(self, db_path: Optional[str] = None):
         """初始化投诉分析器
+
+        Args:
+            db_path: 数据库文件路径。如果未提供，则从环境变量DATABASE获取。
 
         Raises:
             ValueError: 当必需的环境变量缺失时抛出
@@ -42,15 +46,19 @@ class ComplaintAnalyzer:
         self.api_key = os.getenv("API_KEY")
         self.base_url = os.getenv("BASE_URL")
         self.model_name = os.getenv("MODEL_NAME")
-        self.db_path = os.getenv("DATABASE_PATH", "data/complaints.db")
+        self.db_path = db_path if db_path else os.getenv("DATABASE")
+        if not self.db_path:
+            raise ValueError("数据库路径未提供且DATABASE环境变量未设置")
         self.conn = sqlite3.connect(self.db_path)
         self._init_db()
         self.product_patterns: Dict[str, re.Pattern] = PRODUCT_PATTERNS
         self.templates: Dict[str, str] = REPLY_TEMPLATES
-        if self.mode == "enabled" and self.api_key:
+        if (
+            self.mode == "enabled" and self.api_key and self.model_name
+        ):  # 添加对 model_name 的检查
             self.llm = ChatOpenAI(
                 model=self.model_name,
-                api_key=self.api_key,
+                api_key=SecretStr(self.api_key),  # 重新包装 SecretStr
                 base_url=self.base_url,
             )
             self.classification_prompt = PromptTemplate(
@@ -91,10 +99,15 @@ class ComplaintAnalyzer:
             raise ValueError("投诉文本不能为空")
 
         logger.debug(f"开始分类投诉文本: {text[:50]}...")
-        if self.mode == "enabled" and self.llm:
-            # Use the classification chain
-            result = self.classification_chain.invoke(text)
-            return result.content.strip()
+        if (
+            self.mode == "enabled" and self.classification_chain
+        ):  # 检查 classification_chain 是否为 None
+            result: BaseMessage = self.classification_chain.invoke(
+                {"text": text}
+            )  # 明确类型并传入字典
+            if isinstance(result.content, str):
+                return result.content.strip()
+            return str(result.content).strip()
         else:
             for category, pattern in self.product_patterns.items():
                 if pattern.search(text):
@@ -121,9 +134,13 @@ class ComplaintAnalyzer:
         logger.debug(f"开始为类别'{category}'生成回复")
         if not category:
             category = self.classify_complaint(text)
-        if self.mode == "enabled" and self.llm:
-            result = self.reply_chain.invoke({"text": text, "category": category})
-            return result.content.strip()
+        if self.mode == "enabled" and self.reply_chain:  # 检查 reply_chain 是否为 None
+            result: BaseMessage = self.reply_chain.invoke(
+                {"text": text, "category": category}
+            )  # 明确类型
+            if isinstance(result.content, str):
+                return result.content.strip()
+            return str(result.content).strip()
         else:
             return self.templates.get(category, self.templates["未知"])
 
@@ -148,20 +165,24 @@ class ComplaintAnalyzer:
 
     def _init_db(self):
         """初始化数据库表结构"""
-        cursor = self.conn.cursor()
-        cursor.execute(
+        if self.conn is not None:
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS complaints (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    complaint_time DATETIME NOT NULL,
+                    content TEXT NOT NULL,
+                    user_id TEXT NOT NULL,
+                    complaint_category TEXT NOT NULL,
+                    reply TEXT
+                )
             """
-            CREATE TABLE IF NOT EXISTS complaints (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                complaint_time DATETIME NOT NULL,
-                content TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                complaint_category TEXT NOT NULL,
-                reply TEXT
             )
-        """
-        )
-        self.conn.commit()
+            self.conn.commit()
+        else:
+            logger.error("数据库连接为None，无法初始化数据库")
+            raise ValueError("数据库连接为None")
 
     def create_complaint(self, text: str, category: str, reply: str) -> int:
         """创建新的投诉记录
@@ -177,6 +198,8 @@ class ComplaintAnalyzer:
         Raises:
             sqlite3.Error: 数据库操作失败时抛出
         """
+        if self.conn is None:
+            raise ValueError("数据库连接为None")
         try:
             cursor = self.conn.cursor()
             cursor.execute(
@@ -187,7 +210,10 @@ class ComplaintAnalyzer:
                 (text, category, reply),
             )
             self.conn.commit()
-            return cursor.lastrowid
+            last_id = cursor.lastrowid
+            if last_id is not None:
+                return last_id
+            raise ValueError("未能获取新创建的投诉ID")
         except sqlite3.Error as e:
             self.conn.rollback()
             raise sqlite3.Error(f"创建投诉记录失败: {e}")
@@ -204,6 +230,8 @@ class ComplaintAnalyzer:
         Raises:
             sqlite3.Error: 数据库操作失败时抛出
         """
+        if self.conn is None:
+            raise ValueError("数据库连接为None")
         try:
             cursor = self.conn.cursor()
             cursor.execute(
@@ -253,6 +281,8 @@ class ComplaintAnalyzer:
         if not any([content, complaint_category, reply]):
             raise ValueError("至少需要提供一个更新字段")
 
+        if self.conn is None:
+            raise ValueError("数据库连接为None")
         try:
             updates = []
             params = []
@@ -292,6 +322,8 @@ class ComplaintAnalyzer:
         Raises:
             sqlite3.Error: 数据库操作失败时抛出
         """
+        if self.conn is None:
+            raise ValueError("数据库连接为None")
         try:
             cursor = self.conn.cursor()
             cursor.execute("DELETE FROM complaints WHERE id = ?", (complaint_id,))

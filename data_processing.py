@@ -125,7 +125,7 @@ def create_complaint(complaint_time, content, user_id, complaint_category):
             (complaint_time, content, user_id, complaint_category),
         )
         conn.commit()
-        logging.info(f"成功创建投诉记录，用户ID: {user_id}")
+        logging.info(f"成功创建投诉记录，用户: {user_id}")
         return True
     except Exception as e:
         logging.error(f"创建投诉记录时发生错误: {str(e)}")
