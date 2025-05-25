@@ -5,7 +5,7 @@ from typing import Dict, List
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import create_engine, func
@@ -28,7 +28,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # 数据库配置
-SQLALCHEMY_DATABASE_URL = "sqlite:///./complaints.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./data/complaints.db"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )

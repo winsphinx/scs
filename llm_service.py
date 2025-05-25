@@ -4,15 +4,15 @@ import re
 import sqlite3
 from typing import Dict, Optional, Tuple
 
+from dotenv import load_dotenv
+from langchain.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
+
 # 配置日志
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-from dotenv import load_dotenv
-from langchain.prompts import PromptTemplate
-from langchain_openai import ChatOpenAI
 
 try:
     from config import (
@@ -42,7 +42,7 @@ class ComplaintAnalyzer:
         self.api_key = os.getenv("API_KEY")
         self.base_url = os.getenv("BASE_URL")
         self.model_name = os.getenv("MODEL_NAME")
-        self.db_path = os.getenv("DATABASE_PATH", "complaints.db")
+        self.db_path = os.getenv("DATABASE_PATH", "data/complaints.db")
         self.conn = sqlite3.connect(self.db_path)
         self._init_db()
         self.product_patterns: Dict[str, re.Pattern] = PRODUCT_PATTERNS
@@ -269,7 +269,7 @@ class ComplaintAnalyzer:
             params.append(complaint_id)
             query = f"""
                 UPDATE complaints
-                SET {', '.join(updates)}
+                SET {", ".join(updates)}
                 WHERE id = ?
             """
             cursor = self.conn.cursor()
