@@ -26,6 +26,7 @@ class TestComplaintAPI(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         Base.metadata.drop_all(bind=engine)
+        engine.dispose()
 
     def setUp(self):
         self.db = TestingSessionLocal()
