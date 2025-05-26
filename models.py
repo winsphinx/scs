@@ -1,7 +1,6 @@
 from sqlalchemy import Column, DateTime, Integer, String
-from sqlalchemy.orm import declarative_base
 
-Base = declarative_base()
+from database import Base
 
 
 class Complaint(Base):

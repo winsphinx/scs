@@ -8,15 +8,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from sqlalchemy import create_engine, func
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 
-from llm_service import ComplaintAnalyzer
-from models import Base, Complaint
 from config import SIMULATION_CONFIG
+from database import Base, SessionLocal, engine
+from llm_service import ComplaintAnalyzer
+from models import Complaint
 
 app = FastAPI()
-# 配置中间件和静态文件
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -24,17 +24,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# 数据库配置
-SQLALCHEMY_DATABASE_URL = "sqlite:///./data/complaints.db"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-# Base 类已从 models.py 导入
-
 
 # 配置日志
 logging.basicConfig(
