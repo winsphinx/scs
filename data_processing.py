@@ -1,15 +1,11 @@
 import json
-import logging
-import os
 import sqlite3
-from datetime import datetime
 
-# 设置日志配置
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    filename="data_processing.log",
-)
+from utils.imports import datetime, logging, os
+from utils.logging import configure_logging
+
+# 配置日志
+configure_logging()
 
 
 def clean_data(data):

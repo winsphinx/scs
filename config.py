@@ -1,6 +1,9 @@
 import re
 from typing import Dict
 
+# 数据库配置
+SQLALCHEMY_DATABASE_URL = "sqlite:///./data/complaints.db"
+
 # 产品匹配模式配置
 PRODUCT_PATTERNS: Dict[str, re.Pattern] = {
     "电视": re.compile(r"电视|TV|television", re.IGNORECASE),

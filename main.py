@@ -1,8 +1,3 @@
-import logging
-import random
-from datetime import datetime
-from typing import Dict, List, Optional
-
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -12,9 +7,10 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from config import SIMULATION_CONFIG
-from database import Base, SessionLocal, engine
 from llm_service import ComplaintAnalyzer
-from models import Complaint
+from utils.db import Base, Complaint, SessionLocal, engine
+from utils.imports import Dict, List, Optional, datetime, logging, random
+from utils.logging import configure_logging
 
 app = FastAPI()
 app.add_middleware(
@@ -26,10 +22,9 @@ app.add_middleware(
 )
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+
 # 配置日志
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+configure_logging()
 logger = logging.getLogger(__name__)
 
 Base.metadata.create_all(bind=engine)

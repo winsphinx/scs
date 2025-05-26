@@ -1,8 +1,4 @@
-import logging
-import os
-import re
 import sqlite3
-from typing import Dict, Optional, Tuple
 
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
@@ -10,15 +6,21 @@ from langchain_core.messages import BaseMessage
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
+from utils.imports import Dict, Optional, Tuple, logging, os, re
+from utils.logging import configure_logging
+
 # 配置日志
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+configure_logging()
 logger = logging.getLogger(__name__)
 
 try:
-    from config import (CLASSIFICATION_PROMPT, PRODUCT_PATTERNS,
-                        QUERY_PARSER_PROMPT, REPLY_PROMPT, REPLY_TEMPLATES)
+    from config import (
+        CLASSIFICATION_PROMPT,
+        PRODUCT_PATTERNS,
+        QUERY_PARSER_PROMPT,
+        REPLY_PROMPT,
+        REPLY_TEMPLATES,
+    )
 
     logger.info("成功加载配置文件")
 except ImportError as e:
