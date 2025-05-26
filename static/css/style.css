@@ -1,7 +1,7 @@
 :root {
-    --primary-color: #2c3e50;
-    --secondary-color: #3498db;
-    --background-color: #f5f6fa;
+    --primary-color: #e6f1ff;
+    --secondary-color: #64ffda;
+    --background-color: #0a192f;
     --success-color: #27ae60;
     --danger-color: #e74c3c;
 }
@@ -21,7 +21,7 @@ body {
 .output-box {
     margin-top: 15px;
     padding: 15px;
-    background-color: #fff;
+    background-color: #172a45;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     min-height: 100px;
@@ -60,12 +60,13 @@ h1 {
 }
 
 .stats-card {
-    background: white;
+    background: #172a45;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     position: relative;
     margin-bottom: 20px;
+    color: #e6f1ff;
 }
 
 .quick-actions {
@@ -80,7 +81,7 @@ button {
     border-radius: 4px;
     cursor: pointer;
     background-color: var(--secondary-color);
-    color: white;
+    color: #000000;
     transition: opacity 0.3s;
 }
 
@@ -95,14 +96,14 @@ button:hover {
 }
 
 .form-section {
-    background: white;
+    background: #172a45;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .query-section {
-    background: white;
+    background: #172a45;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -110,10 +111,11 @@ button:hover {
     flex-direction: column;
     flex-grow: 1;
     min-height: 0;
+    color: #e6f1ff;
 }
 
 .list-section {
-    background: white;
+    background: #172a45;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -121,6 +123,7 @@ button:hover {
     flex-direction: column;
     flex-grow: 1;
     min-height: 0;
+    color: #e6f1ff;
 }
 
 .form-group {
@@ -190,7 +193,7 @@ textarea#naturalQuery {
     position: sticky;
     /* 固定表头 */
     top: 0;
-    background-color: #f2f2f2;
+    background-color: #1e3a8a;
     z-index: 10;
     /* 确保表头在滚动内容之上 */
     box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
@@ -205,7 +208,7 @@ textarea#naturalQuery {
 }
 
 .complaint-table th {
-    background-color: #f2f2f2;
+    background-color: #1e3a8a;
 }
 
 table {
@@ -222,7 +225,7 @@ td {
 }
 
 th {
-    background-color: #f2f2f2;
+    background-color: #1e3a8a;
 }
 
 .complaint-item {
@@ -242,6 +245,9 @@ th {
     position: relative;
     overflow-x: auto;
     padding-bottom: 30px;
+    background: #172a45;
+    border-radius: 8px;
+    margin-bottom: 20px;
 }
 
 .chart-inner {
@@ -262,7 +268,7 @@ th {
     border-right: 1px solid #ccc;
     text-align: right;
     font-size: 0.8em;
-    color: #555;
+    color: #e6f1ff;
     position: absolute;
     left: 0;
     bottom: 0;
@@ -318,7 +324,7 @@ th {
 
 .chart-label {
     font-size: 0.8em;
-    color: #555;
+    color: #e6f1ff;
     text-align: center;
     white-space: nowrap;
     overflow-x: visible;
@@ -349,7 +355,7 @@ th {
 }
 
 .modal-content {
-    background-color: #fefefe;
+    background-color: #172a45;
     margin: auto;
     padding: 20px;
     border: 1px solid #888;
@@ -358,6 +364,7 @@ th {
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     position: relative;
+    color: #e6f1ff;
 }
 
 .close-button {
@@ -380,7 +387,7 @@ th {
 
 .modal-content h2 {
     margin-top: 0;
-    color: var(--primary-color);
+    color: #64ffda;
 }
 
 .modal-content p {
