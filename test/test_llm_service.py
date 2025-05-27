@@ -95,7 +95,7 @@ class TestComplaintAnalyzer(unittest.TestCase):
                 result.strip().endswith("未知"), f"Expected '未知', but got '{result}'"
             )
 
-    @patch.dict(os.environ, {"LLM_MODE": "enabled", "API_KEY": "test"})
+    @patch.dict(os.environ, {"LLM_MODE": "mock", "API_KEY": "test"})
     def test_llm_classification(self):
         """测试LLM模式下的分类"""
         mock_llm = MagicMock()

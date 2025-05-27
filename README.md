@@ -80,10 +80,7 @@ Content-Type: application/json
 
 ## 配置说明
 1. 复制`.env.example`为`.env`
-2. 在`.env`中设置 API_KEY
-3. 其他可选配置：
-   - API_BASE：模型地址
-   - MODEL_NAME: 模型名称
+2. 在`.env`中设置 API_KEY、API_BASE（模型地址）、MODEL_NAME（模型名称）
 
 ## 贡献指南
 1. Fork本项目

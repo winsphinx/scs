@@ -39,7 +39,7 @@ class ComplaintAnalyzer:
             ValueError: 当必需的环境变量缺失时抛出
         """
         load_dotenv()
-        self.mode = os.getenv("LLM_MODE", "mock")
+        self.mode = os.getenv("LLM_MODE", "online")
         logger.info(f"初始化ComplaintAnalyzer，模式: {self.mode}")
         self.api_key = os.getenv("API_KEY")
         self.base_url = os.getenv("BASE_URL")
@@ -52,7 +52,9 @@ class ComplaintAnalyzer:
         self.product_patterns: Dict[str, re.Pattern] = PRODUCT_PATTERNS
         self.templates: Dict[str, str] = REPLY_TEMPLATES
         if (
-            self.mode == "enabled" and self.api_key and self.model_name
+            self.mode != "mock"
+            and self.api_key
+            and self.model_name  # 非mock模式且配置有效时启用真实LLM
         ):  # 添加对 model_name 的检查
             self.llm = ChatOpenAI(
                 model=self.model_name,
@@ -98,7 +100,8 @@ class ComplaintAnalyzer:
 
         logger.debug(f"开始分类投诉文本: {text[:50]}...")
         if (
-            self.mode == "enabled" and self.classification_chain
+            self.mode != "mock"
+            and self.classification_chain  # 非mock模式且chain已初始化
         ):  # 检查 classification_chain 是否为 None
             result: BaseMessage = self.classification_chain.invoke(
                 {"text": text}
@@ -132,7 +135,7 @@ class ComplaintAnalyzer:
         logger.debug(f"开始为类别'{category}'生成回复")
         if not category:
             category = self.classify_complaint(text)
-        if self.mode == "enabled" and self.reply_chain:  # 检查 reply_chain 是否为 None
+        if self.mode != "mock" and self.reply_chain:  # 非mock模式且chain已初始化
             result: BaseMessage = self.reply_chain.invoke(
                 {"text": text, "category": category}
             )  # 明确类型
