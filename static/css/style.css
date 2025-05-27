@@ -175,7 +175,6 @@ textarea#naturalQuery {
     /* 设置容器固定高度 */
     overflow-y: auto;
     /* 垂直滚动 */
-    margin-top: 15px;
     border: 1px solid #ddd;
     /* 添加边框 */
     border-radius: 8px;
@@ -214,7 +213,6 @@ textarea#naturalQuery {
 table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
 }
 
 th,
