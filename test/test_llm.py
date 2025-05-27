@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
-from llm_service import ComplaintAnalyzer
+from services.llm import ComplaintAnalyzer
 from utils.imports import os
 
 
@@ -103,9 +103,9 @@ class TestComplaintAnalyzer(unittest.TestCase):
         mock_response.content = "冰箱"
         mock_llm.invoke.return_value = mock_response
 
-        with patch("llm_service.ChatOpenAI", return_value=mock_llm):
+        with patch("services.llm.ChatOpenAI", return_value=mock_llm):
             # 直接mock分类结果
-            with patch("llm_service.ComplaintAnalyzer") as MockAnalyzer:
+            with patch("services.llm.ComplaintAnalyzer") as MockAnalyzer:
                 mock_instance = MockAnalyzer.return_value
                 mock_instance.classify_complaint.return_value = "冰箱"
                 analyzer = MockAnalyzer(self.db_path)  # 传入 db_path

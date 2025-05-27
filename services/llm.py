@@ -14,7 +14,7 @@ configure_logging()
 logger = logging.getLogger(__name__)
 
 try:
-    from config import (
+    from utils.config import (
         CLASSIFICATION_PROMPT,
         PRODUCT_PATTERNS,
         QUERY_PARSER_PROMPT,

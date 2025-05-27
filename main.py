@@ -6,8 +6,8 @@ from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from config import SIMULATION_CONFIG
-from llm_service import ComplaintAnalyzer
+from utils.config import SIMULATION_CONFIG
+from services.llm import ComplaintAnalyzer
 from utils.db import Base, Complaint, SessionLocal, engine
 from utils.imports import Dict, List, Optional, datetime, logging, random
 from utils.logging import configure_logging
@@ -20,7 +20,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="templates/static"), name="static")
 
 
 # 配置日志
