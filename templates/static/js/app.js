@@ -76,36 +76,7 @@ async function loadStatistics() {
         const chartInner = document.createElement('div');
         chartInner.classList.add('chart-inner');
 
-        const yAxis = document.createElement('div');
-        yAxis.classList.add('chart-y-axis');
-        const yAxisLabels = [];
-        let step = 1;
-        if (maxCount <= 0) maxCount = 1;
-        if (maxCount > 20) {
-            step = Math.ceil(maxCount / 10) * 2;
-        } else if (maxCount > 10) {
-            step = 5;
-        } else if (maxCount > 5) {
-            step = 2;
-        }
-
-        let minMaxLabel = Math.ceil(maxCount / step) * step;
-        const maxLabelValue = Math.max(minMaxLabel + step, step);
-
-        yAxisLabels.push(0);
-        for (let i = step; i <= maxLabelValue; i += step) {
-            yAxisLabels.push(i);
-        }
-        yAxisLabels.sort((a, b) => b - a);
-
-        yAxisLabels.forEach(labelText => {
-            const label = document.createElement('div');
-            label.classList.add('y-axis-label');
-            label.textContent = labelText;
-            yAxis.appendChild(label);
-        });
-
-        chartInner.appendChild(yAxis);
+        const maxLabelValue = maxCount <= 0 ? 1 : maxCount;
 
         const barsContainer = document.createElement('div');
         barsContainer.classList.add('chart-bars-container');
@@ -116,7 +87,7 @@ async function loadStatistics() {
 
             const bar = document.createElement('div');
             bar.classList.add('chart-bar');
-            const barHeight = (count / maxLabelValue) * 300;
+            const barHeight = (count / maxLabelValue) * (chartContainer.clientHeight - 50); // 减去底部padding和标签空间
             bar.style.height = `${barHeight}px`;
             bar.setAttribute('data-count', count);
 
