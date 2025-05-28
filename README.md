@@ -1,4 +1,4 @@
-# 智能客户服务系统 (SCS)
+# 智能客户服务系统 (Smart Customer Service)
 
 ## 项目概述
 本项目是一个智能客户服务系统，包含爬虫、数据库和LLM平台三部分功能，用于收集、存储和处理客户投诉数据。
@@ -13,20 +13,27 @@
 ```
 .
 ├── data/               # 数据存储目录
-├── mcp/                # SQLite服务模块
-├── static/             # 静态资源
-├── templates/          # HTML模板
-├── test/               # 测试代码
+|   └── schema.sql      # 数据库表结构
+├── logs/               # 日志文件
+├── services/           # 服务模块
+│   ├── fetch.py        # 数据抓取服务
+│   └── llm.py          # LLM服务实现
+├── templates/          # 前端资源
+│   ├── static/         # 静态资源
+│   └── index.html      # 前端页面
+├── tests/              # 测试代码
 ├── utils/              # 工具模块
-├── config.py           # 配置文件
-├── data_processing.py  # 数据处理
-├── llm_service.py      # LLM服务
+│   ├── config.py       # 配置管理
+│   ├── db.py           # 数据库操作
+│   └── logging.py      # 日志配置
+├── .env.example        # 环境变量示例
 ├── main.py             # 主程序入口
-└── pyproject.toml      # 项目配置
+├── pyproject.toml      # 项目库配置
+└── uv.lock             # 依赖锁定文件
 ```
 
 ## 开发环境
-- Python
+- Python 3.12+
 - uv (推荐) 或 pip
 - SQLite 3
 
@@ -37,7 +44,7 @@ git clone https://github.com/winsphinx/scs
 ```
 2. 安装依赖：
 ```bash
-uv sync
+uv pip install -e .
 ```
 
 ## 测试方法
