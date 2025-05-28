@@ -12,6 +12,10 @@ from utils.db import Base, Complaint, SessionLocal, engine
 from utils.imports import Dict, List, Optional, datetime, logging, random
 from utils.logging import configure_logging
 
+# 配置日志
+configure_logging()
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -22,17 +26,7 @@ app.add_middleware(
 )
 app.mount("/static", StaticFiles(directory="templates/static"), name="static")
 
-
-# 配置日志
-configure_logging()
-logger = logging.getLogger(__name__)
-
 Base.metadata.create_all(bind=engine)
-
-
-@app.get("/")
-async def read_index():
-    return FileResponse("templates/index.html")
 
 
 def get_db():
@@ -56,6 +50,11 @@ class ComplaintResponse(ComplaintCreate):
 
     class Config:
         from_attributes = True
+
+
+@app.get("/")
+async def read_index():
+    return FileResponse("templates/index.html")
 
 
 @app.post("/complaints/", response_model=ComplaintResponse)

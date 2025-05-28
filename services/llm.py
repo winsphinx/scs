@@ -41,21 +41,16 @@ class ComplaintAnalyzer:
         load_dotenv()
         self.mode = os.getenv("LLM_MODE", "online")
         logger.info(f"初始化ComplaintAnalyzer，模式: {self.mode}")
+
         self.api_key = os.getenv("API_KEY")
         self.base_url = os.getenv("BASE_URL")
         self.model_name = os.getenv("MODEL_NAME")
         self.db_path = "./data/complaints.db"
-        if not self.db_path:
-            raise ValueError("数据库路径未提供。")
         self.conn = sqlite3.connect(self.db_path)
         self._init_db()
         self.product_patterns: Dict[str, re.Pattern] = PRODUCT_PATTERNS
         self.templates: Dict[str, str] = REPLY_TEMPLATES
-        if (
-            self.mode != "mock"
-            and self.api_key
-            and self.model_name  # 非mock模式且配置有效时启用真实LLM
-        ):  # 添加对 model_name 的检查
+        if self.mode != "mock" and self.api_key and self.model_name:
             self.llm = ChatOpenAI(
                 model=self.model_name,
                 api_key=SecretStr(self.api_key),  # 重新包装 SecretStr
@@ -81,6 +76,15 @@ class ComplaintAnalyzer:
             self.llm = None
             self.classification_chain = None
             self.reply_chain = None
+
+            class MockChain:
+                def invoke(self, x):
+                    class Result:
+                        content = ""
+
+                    return Result()
+
+            self.query_parser_chain = MockChain()
 
     def classify_complaint(self, text: str) -> str:
         """分类客户投诉文本，判断涉及的产品类别。
