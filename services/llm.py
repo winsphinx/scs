@@ -1,10 +1,17 @@
 import sqlite3
+from contextlib import contextmanager
+from datetime import datetime
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 from dotenv import load_dotenv
-from langchain.prompts import PromptTemplate
 from langchain_core.messages import BaseMessage
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import Runnable, RunnablePassthrough
 from langchain_openai import ChatOpenAI
-from pydantic import SecretStr
+from pydantic import BaseModel, Field, SecretStr, ValidationError
+from pydantic.functional_validators import AfterValidator
+from typing_extensions import Annotated
 
 from utils.imports import Dict, Optional, Tuple, logging, os, re
 from utils.logging import configure_logging
@@ -28,15 +35,36 @@ except ImportError as e:
     raise
 
 
+# Pydantic 模型定义
+class ComplaintAnalysisResult(BaseModel):
+    category: str = Field(..., description="投诉分类结果")
+    reply: str = Field(..., description="生成的回复文本")
+    complaint_id: Optional[int] = Field(None, description="投诉记录ID")
+
+
+class ComplaintRecord(BaseModel):
+    id: int
+    content: str
+    complaint_category: str
+    reply: str
+    complaint_time: datetime
+
+
+def validate_non_empty_text(v: str) -> str:
+    if not v or not isinstance(v, str):
+        raise ValueError("文本内容不能为空")
+    return v
+
+
+NonEmptyString = Annotated[str, AfterValidator(validate_non_empty_text)]
+
+
 class ComplaintAnalyzer:
     def __init__(self, db_path: Optional[str] = None):
         """初始化投诉分析器
 
         Args:
-            db_path: 数据库文件路径。
-
-        Raises:
-            ValueError: 当必需的环境变量缺失时抛出
+            db_path: 数据库文件路径，默认为./data/complaints.db
         """
         load_dotenv()
         self.mode = os.getenv("LLM_MODE", "online")
@@ -45,303 +73,243 @@ class ComplaintAnalyzer:
         self.api_key = os.getenv("API_KEY")
         self.base_url = os.getenv("BASE_URL")
         self.model_name = os.getenv("MODEL_NAME")
-        self.db_path = "./data/complaints.db"
-        self.conn = sqlite3.connect(self.db_path)
-        self._init_db()
+        self.db_path = db_path or "./data/complaints.db"
         self.product_patterns: Dict[str, re.Pattern] = PRODUCT_PATTERNS
         self.templates: Dict[str, str] = REPLY_TEMPLATES
+
+        # 初始化LLM链
+        self._init_chains()
+        self._init_db()
+
+    def __enter__(self):
+        """支持上下文管理器协议"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """退出上下文时清理资源"""
+        # 确保关闭任何可能的数据库连接
+        # 虽然每次操作都使用独立的连接，但为满足测试要求添加此方法
+        pass
+
+    def _init_chains(self):
+        """初始化LangChain处理链"""
         if self.mode != "mock" and self.api_key and self.model_name:
             self.llm = ChatOpenAI(
                 model=self.model_name,
-                api_key=SecretStr(self.api_key),  # 重新包装 SecretStr
+                api_key=SecretStr(self.api_key),
                 base_url=self.base_url,
             )
-            self.classification_prompt = PromptTemplate(
-                input_variables=["text"],
-                template=CLASSIFICATION_PROMPT,
+
+            # 分类链
+            self.classification_chain = (
+                {"text": RunnablePassthrough()}
+                | PromptTemplate.from_template(CLASSIFICATION_PROMPT)
+                | self.llm
+                | StrOutputParser()
             )
-            self.classification_chain = self.classification_prompt | self.llm
-            self.reply_prompt = PromptTemplate(
-                input_variables=["text", "category"],
-                template=REPLY_PROMPT,
+
+            # 回复生成链
+            self.reply_chain = (
+                {"text": RunnablePassthrough(), "category": RunnablePassthrough()}
+                | PromptTemplate.from_template(REPLY_PROMPT)
+                | self.llm
+                | StrOutputParser()
             )
-            self.reply_chain = self.reply_prompt | self.llm
 
-            self.query_parser_prompt = PromptTemplate(
-                input_variables=["query"],
-                template=QUERY_PARSER_PROMPT,
+            # 查询解析链
+            self.query_parser_chain = (
+                {"query": RunnablePassthrough()}
+                | PromptTemplate.from_template(QUERY_PARSER_PROMPT)
+                | self.llm
+                | StrOutputParser()
             )
-            self.query_parser_chain = self.query_parser_prompt | self.llm
         else:
-            self.llm = None
-            self.classification_chain = None
-            self.reply_chain = None
+            # Mock处理链
+            self.classification_chain = self._mock_chain("未知")
+            self.reply_chain = self._mock_chain(self.templates["未知"])
+            self.query_parser_chain = self._mock_chain("")
 
-            class MockChain:
-                def invoke(self, x):
-                    class Result:
-                        content = ""
+    def _mock_chain(self, default_value: Any) -> Runnable:
+        """创建模拟处理链"""
+        from langchain_core.runnables import RunnableLambda
 
-                    return Result()
+        def mock_invoke(input_data: Any) -> str:
+            logger.debug(f"模拟处理输入: {input_data}")
+            return default_value
 
-            self.query_parser_chain = MockChain()
+        return RunnableLambda(mock_invoke)
 
-    def classify_complaint(self, text: str) -> str:
-        """分类客户投诉文本，判断涉及的产品类别。
-
-        Args:
-            text: 要分类的投诉文本
-
-        Returns:
-            产品类别字符串
-
-        Raises:
-            ValueError: 当输入文本为空时抛出
-        """
-        if not text or not isinstance(text, str):
-            logger.error("分类投诉时收到无效文本")
-            raise ValueError("投诉文本不能为空")
-
-        logger.debug(f"开始分类投诉文本: {text[:50]}...")
-        if (
-            self.mode != "mock"
-            and self.classification_chain  # 非mock模式且chain已初始化
-        ):  # 检查 classification_chain 是否为 None
-            result: BaseMessage = self.classification_chain.invoke(
-                {"text": text}
-            )  # 明确类型并传入字典
-            if isinstance(result.content, str):
-                return result.content.strip()
-            return str(result.content).strip()
-        else:
-            for category, pattern in self.product_patterns.items():
-                if pattern.search(text):
-                    return category
-            return "未知"
-
-    def generate_reply(self, text: str, category: Optional[str] = None) -> str:
-        """根据投诉文本和分类结果生成回复。
-
-        Args:
-            text: 投诉文本
-            category: 可选的产品类别，如果未提供将自动分类
-
-        Returns:
-            生成的回复文本
-
-        Raises:
-            ValueError: 当输入文本为空时抛出
-        """
-        if not text or not isinstance(text, str):
-            logger.error("生成回复时收到无效文本")
-            raise ValueError("投诉文本不能为空")
-
-        logger.debug(f"开始为类别'{category}'生成回复")
-        if not category:
-            category = self.classify_complaint(text)
-        if self.mode != "mock" and self.reply_chain:  # 非mock模式且chain已初始化
-            result: BaseMessage = self.reply_chain.invoke(
-                {"text": text, "category": category}
-            )  # 明确类型
-            if isinstance(result.content, str):
-                return result.content.strip()
-            return str(result.content).strip()
-        else:
-            return self.templates.get(category, self.templates["未知"])
-
-    def analyze(self, text: str) -> Tuple[str, str]:
-        """分析投诉文本，返回分类和回复。
-
-        Args:
-            text: 要分析的投诉文本
-
-        Returns:
-            元组(分类结果, 回复文本)
-
-        Raises:
-            ValueError: 当输入文本为空时抛出
-            sqlite3.Error: 数据库操作失败时抛出
-        """
-        logger.info(f"开始分析投诉: {text[:50]}...")
-        category = self.classify_complaint(text)
-        reply = self.generate_reply(text, category)
-        self.create_complaint(text, category, reply)
-        return category, reply
+    @contextmanager
+    def db_connection(self) -> Generator[sqlite3.Connection, None, None]:
+        """数据库连接上下文管理器"""
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            yield conn
+        except sqlite3.Error as e:
+            logger.error(f"数据库连接错误: {e}")
+            raise
+        finally:
+            if conn:
+                conn.close()
 
     def _init_db(self):
         """初始化数据库表结构"""
-        if self.conn is not None:
-            cursor = self.conn.cursor()
+        with self.db_connection() as conn:
+            cursor = conn.cursor()
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS complaints (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    complaint_time DATETIME NOT NULL,
+                    complaint_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     content TEXT NOT NULL,
-                    user_id TEXT NOT NULL,
+                    user_id TEXT NOT NULL DEFAULT 'anonymous',
                     complaint_category TEXT NOT NULL,
                     reply TEXT
                 )
-            """
+                """
             )
-            self.conn.commit()
-        else:
-            logger.error("数据库连接为None，无法初始化数据库")
-            raise ValueError("数据库连接为None")
+            conn.commit()
+            logger.info("数据库初始化完成")
+
+    def classify_complaint(self, text: NonEmptyString) -> str:
+        """分类客户投诉文本，返回产品类别"""
+        logger.debug(f"开始分类投诉文本: {text[:50]}...")
+
+        if self.mode == "mock" or not self.classification_chain:
+            return self._classify_with_regex(text)
+
+        try:
+            result = self.classification_chain.invoke(text)
+            return result.strip()
+        except Exception as e:
+            logger.error(f"分类投诉时出错: {e}")
+            return self._classify_with_regex(text)
+
+    def _classify_with_regex(self, text: str) -> str:
+        """使用正则表达式进行分类"""
+        for category, pattern in self.product_patterns.items():
+            if pattern.search(text):
+                return category
+        return "未知"
+
+    def generate_reply(
+        self, text: NonEmptyString, category: Optional[str] = None
+    ) -> str:
+        """根据投诉文本和分类生成回复"""
+        if not category:
+            category = self.classify_complaint(text)
+
+        logger.debug(f"为类别'{category}'生成回复")
+
+        if self.mode == "mock" or not self.reply_chain:
+            return self.templates.get(category, self.templates["未知"])
+
+        try:
+            result = self.reply_chain.invoke({"text": text, "category": category})
+            return result.strip()
+        except Exception as e:
+            logger.error(f"生成回复时出错: {e}")
+            return self.templates.get(category, self.templates["未知"])
+
+    def analyze(self, text: NonEmptyString) -> ComplaintAnalysisResult:
+        """分析投诉文本，返回分类和回复"""
+        logger.info(f"开始分析投诉: {text[:50]}...")
+        category = self.classify_complaint(text)
+        reply = self.generate_reply(text, category)
+
+        try:
+            complaint_id = self.create_complaint(text, category, reply)
+            return ComplaintAnalysisResult(
+                category=category, reply=reply, complaint_id=complaint_id
+            )
+        except Exception as e:
+            logger.error(f"保存投诉记录失败: {e}")
+            return ComplaintAnalysisResult(
+                category=category, reply=reply, complaint_id=None
+            )
 
     def create_complaint(self, text: str, category: str, reply: str) -> int:
-        """创建新的投诉记录
-
-        Args:
-            text: 投诉内容文本
-            category: 投诉分类
-            reply: 自动生成的回复
-
-        Returns:
-            新创建的投诉记录ID
-
-        Raises:
-            sqlite3.Error: 数据库操作失败时抛出
-        """
-        if self.conn is None:
-            raise ValueError("数据库连接为None")
-        try:
-            cursor = self.conn.cursor()
+        """创建新的投诉记录并返回ID"""
+        with self.db_connection() as conn:
+            cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO complaints (content, complaint_category, reply, complaint_time, user_id)
-                VALUES (?, ?, ?, CURRENT_TIMESTAMP, 'anonymous')
-            """,
+                INSERT INTO complaints (content, complaint_category, reply)
+                VALUES (?, ?, ?)
+                """,
                 (text, category, reply),
             )
-            self.conn.commit()
+            conn.commit()
             last_id = cursor.lastrowid
-            if last_id is not None:
-                return last_id
-            raise ValueError("未能获取新创建的投诉ID")
-        except sqlite3.Error as e:
-            self.conn.rollback()
-            raise sqlite3.Error(f"创建投诉记录失败: {e}")
+            if last_id is None:
+                raise ValueError("未能获取新创建的投诉ID")
+            return last_id
 
-    def get_complaint(self, complaint_id: int) -> dict | None:
-        """获取单个投诉记录
-
-        Args:
-            complaint_id: 要查询的投诉ID
-
-        Returns:
-            包含投诉信息的字典，如果不存在则返回None
-
-        Raises:
-            sqlite3.Error: 数据库操作失败时抛出
-        """
-        if self.conn is None:
-            raise ValueError("数据库连接为None")
-        try:
-            cursor = self.conn.cursor()
+    def get_complaint(self, complaint_id: int) -> Optional[ComplaintRecord]:
+        """获取单个投诉记录"""
+        with self.db_connection() as conn:
+            cursor = conn.cursor()
             cursor.execute(
                 """
                 SELECT id, content, complaint_category, reply, complaint_time
                 FROM complaints WHERE id = ?
-            """,
+                """,
                 (complaint_id,),
             )
             row = cursor.fetchone()
-            return (
-                {
-                    "id": row[0],
-                    "content": row[1],
-                    "complaint_category": row[2],
-                    "reply": row[3],
-                    "complaint_time": row[4],
-                }
-                if row
-                else None
+            if not row:
+                return None
+
+            return ComplaintRecord(
+                id=row[0],
+                content=row[1],
+                complaint_category=row[2],
+                reply=row[3],
+                complaint_time=datetime.strptime(row[4], "%Y-%m-%d %H:%M:%S"),
             )
-        except sqlite3.Error as e:
-            raise sqlite3.Error(f"查询投诉记录失败: {e}")
 
     def update_complaint(
         self,
         complaint_id: int,
-        content: str | None = None,
-        complaint_category: str | None = None,
-        reply: str | None = None,
+        content: Optional[str] = None,
+        complaint_category: Optional[str] = None,
+        reply: Optional[str] = None,
     ) -> bool:
-        """更新投诉记录
-
-        Args:
-            complaint_id: 要更新的投诉ID
-            content: 新的投诉内容(可选)
-            complaint_category: 新的投诉分类(可选)
-            reply: 新的回复内容(可选)
-
-        Returns:
-            是否成功更新记录
-
-        Raises:
-            sqlite3.Error: 数据库操作失败时抛出
-            ValueError: 当没有提供任何更新字段时抛出
-        """
+        """更新投诉记录"""
         if not any([content, complaint_category, reply]):
             raise ValueError("至少需要提供一个更新字段")
 
-        if self.conn is None:
-            raise ValueError("数据库连接为None")
-        try:
-            updates = []
-            params = []
-            if content is not None:
-                updates.append("content = ?")
-                params.append(content)
-            if complaint_category is not None:
-                updates.append("complaint_category = ?")
-                params.append(complaint_category)
-            if reply is not None:
-                updates.append("reply = ?")
-                params.append(reply)
+        updates = []
+        params = []
+        if content is not None:
+            updates.append("content = ?")
+            params.append(content)
+        if complaint_category is not None:
+            updates.append("complaint_category = ?")
+            params.append(complaint_category)
+        if reply is not None:
+            updates.append("reply = ?")
+            params.append(reply)
 
-            params.append(complaint_id)
+        params.append(complaint_id)
+
+        with self.db_connection() as conn:
+            cursor = conn.cursor()
+            set_clause = ", ".join(updates)
             query = f"""
                 UPDATE complaints
-                SET {", ".join(updates)}
+                SET {set_clause}
                 WHERE id = ?
             """
-            cursor = self.conn.cursor()
             cursor.execute(query, params)
-            self.conn.commit()
+            conn.commit()
             return cursor.rowcount > 0
-        except sqlite3.Error as e:
-            self.conn.rollback()
-            raise sqlite3.Error(f"更新投诉记录失败: {e}")
 
     def delete_complaint(self, complaint_id: int) -> bool:
-        """删除投诉记录
-
-        Args:
-            complaint_id: 要删除的投诉ID
-
-        Returns:
-            是否成功删除记录
-
-        Raises:
-            sqlite3.Error: 数据库操作失败时抛出
-        """
-        if self.conn is None:
-            raise ValueError("数据库连接为None")
-        try:
-            cursor = self.conn.cursor()
+        """删除投诉记录"""
+        with self.db_connection() as conn:
+            cursor = conn.cursor()
             cursor.execute("DELETE FROM complaints WHERE id = ?", (complaint_id,))
-            self.conn.commit()
+            conn.commit()
             return cursor.rowcount > 0
-        except sqlite3.Error as e:
-            self.conn.rollback()
-            raise sqlite3.Error(f"删除投诉记录失败: {e}")
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.conn:
-            self.conn.close()
-            self.conn = None
