@@ -78,8 +78,8 @@ def read_complaints(
 
     if q:
         try:
-            filter_condition = analyzer.query_parser_chain.invoke({"query": q}).content
-            if filter_condition:
+            filter_condition = analyzer.query_parser_chain.invoke({"query": q})
+            if filter_condition and filter_condition.strip():
                 logger.info(f"Parsed query condition: {filter_condition}")
 
                 from sqlalchemy import and_, not_, or_
