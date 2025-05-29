@@ -22,8 +22,8 @@ class TestComplaintAnalyzer(unittest.TestCase):
     def test_db_initialization(self):
         """测试数据库表结构初始化"""
         with ComplaintAnalyzer(self.db_path) as analyzer:
-            if analyzer.conn is not None:
-                cursor = analyzer.conn.cursor()
+            with analyzer.db_connection() as conn:
+                cursor = conn.cursor()
                 cursor.execute("PRAGMA table_info(complaints)")
                 columns = [col[1] for col in cursor.fetchall()]
                 self.assertListEqual(
@@ -37,15 +37,15 @@ class TestComplaintAnalyzer(unittest.TestCase):
                         "reply",
                     ],
                 )
-            else:
-                self.fail("Database connection is None")
 
     def test_complaint_lifecycle(self):
         """测试完整的CRUD流程"""
         with ComplaintAnalyzer(self.db_path) as analyzer:
             # 测试创建
             test_text = "电视屏幕出现条纹"
-            category, reply = analyzer.analyze(test_text)
+            result = analyzer.analyze(test_text)
+            category = result.category
+            reply = result.reply
             complaint_id = analyzer.create_complaint(test_text, category, reply)
             self.assertIsInstance(complaint_id, int)
 
@@ -53,14 +53,16 @@ class TestComplaintAnalyzer(unittest.TestCase):
             complaint = analyzer.get_complaint(complaint_id)
             self.assertIsNotNone(complaint, "Complaint not found")
             if complaint is not None:
-                self.assertEqual(complaint["content"], test_text)
+                self.assertEqual(complaint.content, test_text)
                 # 提取分类结果并进行断言
-                category_result = complaint["complaint_category"]
+                category_result = complaint.complaint_category
                 self.assertTrue(
                     category_result.strip().endswith("电视"),
                     f"Expected '电视', but got '{category_result}'",
                 )
-                self.assertIsInstance(complaint["complaint_time"], str)
+                from datetime import datetime
+
+                self.assertIsInstance(complaint.complaint_time, datetime)
 
             # 测试更新
             new_reply = "更新后的回复内容"
@@ -69,7 +71,7 @@ class TestComplaintAnalyzer(unittest.TestCase):
             updated_complaint = analyzer.get_complaint(complaint_id)
             self.assertIsNotNone(updated_complaint, "Updated complaint not found")
             if updated_complaint is not None:
-                self.assertEqual(updated_complaint["reply"], new_reply)
+                self.assertEqual(updated_complaint.reply, new_reply)
 
             # 测试删除
             deleted = analyzer.delete_complaint(complaint_id)
@@ -114,15 +116,11 @@ class TestComplaintAnalyzer(unittest.TestCase):
 
     def test_context_manager(self):
         """测试上下文管理器关闭连接"""
-        analyzer = ComplaintAnalyzer(self.db_path)  # 传入 db_path
-        # 在上下文中连接可用
+        analyzer = ComplaintAnalyzer(self.db_path)
+        # 在上下文中操作数据库
         with analyzer as ctx_analyzer:
-            if ctx_analyzer.conn is not None:
-                ctx_analyzer.conn.execute("SELECT 1")
-            else:
-                self.fail("Database connection is None during context")
-        # 退出上下文后连接已关闭
-        self.assertIsNone(analyzer.conn)
+            with ctx_analyzer.db_connection() as conn:
+                conn.execute("SELECT 1")
 
     def test_template_reply(self):
         """测试模板回复生成"""
@@ -158,7 +156,9 @@ class TestComplaintAnalyzer(unittest.TestCase):
         with ComplaintAnalyzer(self.db_path) as analyzer:
             # 创建测试记录
             test_text = "测试部分更新"
-            category, reply = analyzer.analyze(test_text)
+            result = analyzer.analyze(test_text)
+            category = result.category
+            reply = result.reply
             complaint_id = analyzer.create_complaint(test_text, category, reply)
 
             # 只更新回复内容
@@ -168,9 +168,9 @@ class TestComplaintAnalyzer(unittest.TestCase):
             updated_complaint = analyzer.get_complaint(complaint_id)
             self.assertIsNotNone(updated_complaint, "Updated complaint not found")
             if updated_complaint is not None:
-                self.assertEqual(updated_complaint["reply"], new_reply)
+                self.assertEqual(updated_complaint.reply, new_reply)
                 self.assertEqual(
-                    updated_complaint["content"], test_text
+                    updated_complaint.content, test_text
                 )  # 确保其他字段不变
 
             # 只更新分类
@@ -182,10 +182,8 @@ class TestComplaintAnalyzer(unittest.TestCase):
             updated_complaint = analyzer.get_complaint(complaint_id)
             self.assertIsNotNone(updated_complaint, "Updated complaint not found")
             if updated_complaint is not None:
-                self.assertEqual(updated_complaint["complaint_category"], new_category)
-                self.assertEqual(
-                    updated_complaint["reply"], new_reply
-                )  # 确保其他字段不变
+                self.assertEqual(updated_complaint.complaint_category, new_category)
+                self.assertEqual(updated_complaint.reply, new_reply)  # 确保其他字段不变
 
 
 if __name__ == "__main__":
