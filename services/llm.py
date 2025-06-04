@@ -1,19 +1,18 @@
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Dict, Generator, Optional
 
 from dotenv import load_dotenv
-from langchain_core.messages import BaseMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import Runnable, RunnablePassthrough
 from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, Field, SecretStr, ValidationError
+from pydantic import BaseModel, Field, SecretStr
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import Annotated
 
-from utils.imports import Dict, Optional, Tuple, logging, os, re
+from utils.imports import Dict, Optional, logging, os, re
 from utils.logging import configure_logging
 
 # 配置日志
