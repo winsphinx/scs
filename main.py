@@ -6,8 +6,8 @@ from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from utils.config import SIMULATION_CONFIG
 from services.llm import ComplaintAnalyzer
+from utils.config import SIMULATION_CONFIG
 from utils.db import Base, Complaint, SessionLocal, engine
 from utils.imports import Dict, List, Optional, datetime, logging, random
 from utils.logging import configure_logging
