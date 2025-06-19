@@ -1,3 +1,8 @@
+import logging
+import random
+from datetime import datetime
+from typing import Dict, List, Optional
+
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -9,7 +14,6 @@ from sqlalchemy.orm import Session
 from services.llm import ComplaintAnalyzer
 from utils.config import SIMULATION_CONFIG
 from utils.db import Base, Complaint, SessionLocal, engine
-from utils.imports import Dict, List, Optional, datetime, logging, random
 from utils.logging import configure_logging
 
 # 配置日志
