@@ -69,7 +69,7 @@ class ComplaintAnalyzer:
         """
         load_dotenv()
         self.mode = os.getenv("LLM_MODE", "online")
-        logger.info(f"初始化ComplaintAnalyzer，模式: {self.mode}")
+        logger.info(f"初始化 ComplaintAnalyzer, 模式: {self.mode}")
 
         self.api_key = os.getenv("API_KEY")
         self.base_url = os.getenv("BASE_URL")
@@ -88,8 +88,6 @@ class ComplaintAnalyzer:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """退出上下文时清理资源"""
-        # 确保关闭任何可能的数据库连接
-        # 虽然每次操作都使用独立的连接，但为满足测试要求添加此方法
         pass
 
     def _init_chains(self):
