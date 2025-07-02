@@ -41,15 +41,24 @@
 - uv (推荐) 或 pip
 - SQLite 3
 
+## 配置说明
+
+1. 复制`.env.example`为`.env`
+2. 在`.env`中设置 API_KEY、API_BASE（模型地址）、MODEL_NAME（模型名称）
+
 ## 安装指南
 
 1. 克隆仓库
 ```bash
 git clone https://github.com/winsphinx/scs
 ```
-2. 安装依赖：
+2. 安装依赖
 ```bash
-uv pip install -e .
+uv sync
+```
+3. 运行项目
+```bash
+uv run main.py
 ```
 
 ## 测试方法
@@ -91,11 +100,6 @@ Content-Type: application/json
     "question": "你的问题"
 }
 ```
-
-## 配置说明
-
-1. 复制`.env.example`为`.env`
-2. 在`.env`中设置 API_KEY、API_BASE（模型地址）、MODEL_NAME（模型名称）
 
 ## 贡献指南
 
