@@ -216,17 +216,9 @@ class ComplaintAnalyzer:
         logger.info(f"开始分析投诉: {text[:50]}...")
         category = self.classify_complaint(text)
         reply = self.generate_reply(text, category)
-
-        try:
-            complaint_id = self.create_complaint(text, category, reply)
-            return ComplaintAnalysisResult(
-                category=category, reply=reply, complaint_id=complaint_id
-            )
-        except Exception as e:
-            logger.error(f"保存投诉记录失败: {e}")
-            return ComplaintAnalysisResult(
-                category=category, reply=reply, complaint_id=None
-            )
+        return ComplaintAnalysisResult(
+            category=category, reply=reply, complaint_id=None
+        )
 
     def create_complaint(self, text: str, category: str, reply: str) -> int:
         """创建新的投诉记录并返回ID"""

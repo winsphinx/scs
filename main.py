@@ -1,7 +1,7 @@
 import logging
 import random
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -86,32 +86,45 @@ def read_complaints(
             if filter_condition and filter_condition.strip():
                 logger.info(f"Parsed query condition: {filter_condition}")
 
-                from sqlalchemy import and_, not_, or_
+                try:
+                    from sqlalchemy import and_, not_, or_
 
-                safe_dict = {
-                    "and_": and_,
-                    "or_": or_,
-                    "not_": not_,
-                    "Complaint": Complaint,
-                    "datetime": datetime,
-                    "complaint_category": Complaint.complaint_category,
-                    "content": Complaint.content,
-                    "user_id": Complaint.user_id,
-                    "complaint_time": Complaint.complaint_time,
-                    "reply": Complaint.reply,
-                    "contains": lambda field, value: field.contains(value),
-                }
-                if not isinstance(filter_condition, str):
-                    raise ValueError("Filter condition must be a string")
-                compiled_condition = compile(str(filter_condition), "<string>", "eval")
-                for name in compiled_condition.co_names:
-                    if name not in safe_dict:
-                        raise ValueError(f"Unsafe expression: {name}")
-                condition = eval(compiled_condition, {"__builtins__": None}, safe_dict)
-                base_query = base_query.filter(condition)
+                    safe_dict = {
+                        "and_": and_,
+                        "or_": or_,
+                        "not_": not_,
+                        "Complaint": Complaint,
+                        "datetime": datetime,
+                        "complaint_category": Complaint.complaint_category,
+                        "content": Complaint.content,
+                        "user_id": Complaint.user_id,
+                        "complaint_time": Complaint.complaint_time,
+                        "reply": Complaint.reply,
+                        "contains": lambda field, value: field.contains(value),
+                    }
+                    if not isinstance(filter_condition, str):
+                        raise ValueError("Filter condition must be a string")
+                    compiled_condition = compile(
+                        str(filter_condition), "<string>", "eval"
+                    )
+                    for name in compiled_condition.co_names:
+                        if name not in safe_dict:
+                            raise ValueError(f"Unsafe expression: {name}")
+                    condition = eval(
+                        compiled_condition, {"__builtins__": None}, safe_dict
+                    )
+                    base_query = base_query.filter(condition)
+                except Exception as e:
+                    logger.warning(
+                        f"Query parsing failed, falling back to simple search: {str(e)}"
+                    )
+                    # 查询解析失败时回退到简单搜索
+                    base_query = base_query.filter(
+                        Complaint.content.contains(q)
+                        | Complaint.complaint_category.contains(q)
+                    )
         except Exception as e:
-            logger.error(f"Query parsing failed: {str(e)}")
-            raise HTTPException(status_code=400, detail=f"查询解析失败: {str(e)}")
+            logger.warning(f"查询解析失败: {str(e)}")
 
     complaints = base_query.offset(skip).limit(limit).all()
     return complaints
@@ -181,6 +194,29 @@ def simulate_data(db: Session = Depends(get_db)):
         logger.info(f"Generated simulated complaint: {complaint.content}")
     db.commit()
     return complaints
+
+
+@app.post("/analyze/")
+def analyze_complaint(
+    request: Dict[str, Any],
+    analyzer: ComplaintAnalyzer = Depends(lambda: ComplaintAnalyzer()),
+):
+    """分析投诉内容并返回处理方法"""
+    try:
+        text = request.get("text", "")
+        if not text:
+            raise HTTPException(status_code=400, detail="投诉内容不能为空")
+
+        result = analyzer.analyze(text)
+        logger.info(f"Analyzer category: {result.category}, reply: {result.reply}")
+        return {
+            "category": result.category,
+            "reply": result.reply,
+            "suggestion": f"{result.reply}",  # 添加AI建议的处理方法
+        }
+    except Exception as e:
+        logger.error(f"Error in analyze_complaint: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

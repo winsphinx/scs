@@ -30,7 +30,7 @@
                     <textarea id="naturalQuery" rows="4"
                         placeholder="示例查询：\n1. 用户user_5本周的投诉记录\n2. 过去24小时未解决的电视问题\n3. 显示所有冰箱质量投诉"
                         class="search-input"></textarea>
-                    <button class="search-btn" onclick="handleSearch()">
+                    <button class="search-btn">
                         🔍 智能搜索
                     </button>
                 </div>
@@ -71,6 +71,17 @@
             <p><strong>投诉时间:</strong> <span id="modalTime"></span></p>
             <p><strong>投诉内容:</strong> <span id="modalContent"></span></p>
             <p><strong>回复状态:</strong> <span id="modalReply"></span></p>
+        </div>
+    </div>
+
+    <div id="analysisModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button"
+                onclick="document.getElementById('analysisModal').style.display='none'">&times;</span>
+            <h2>AI分析结果</h2>
+            <p><strong>投诉分类:</strong> <span id="analysisCategory"></span></p>
+            <p><strong>原因分析:</strong> <span id="analysisReason"></span></p>
+            <p><strong>处理建议:</strong> <span id="analysisSuggestion"></span></p>
         </div>
     </div>
 

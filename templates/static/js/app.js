@@ -1,43 +1,5 @@
 const API_BASE = 'http://localhost:8000';
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadComplaints();
-    loadStatistics();
-
-    document.querySelector('.simulate-btn').addEventListener('click', simulateData);
-    document.querySelector('.refresh-btn').addEventListener('click', loadComplaints);
-});
-
-async function submitComplaint(event) {
-    event.preventDefault();
-
-    const complaintData = {
-        user_id: document.getElementById('userId').value,
-        complaint_category: document.getElementById('productCategory').value,
-        content: document.getElementById('content').value,
-        complaint_time: new Date().toISOString()
-    };
-
-    try {
-        const response = await fetch(`${API_BASE}/complaints/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(complaintData)
-        });
-
-        if (!response.ok) throw new Error('提交失败');
-
-        alert('投诉提交成功！');
-        event.target.reset();
-        await loadComplaints();
-        await loadStatistics();
-    } catch (error) {
-        alert(`错误：${error.message}`);
-    }
-}
-
 async function loadComplaints() {
     try {
         const response = await fetch(`${API_BASE}/complaints/`);
@@ -87,7 +49,7 @@ async function loadStatistics() {
 
             const bar = document.createElement('div');
             bar.classList.add('chart-bar');
-            const barHeight = (count / maxLabelValue) * (chartContainer.clientHeight - 50); // 减去底部padding和标签空间
+            const barHeight = (count / maxLabelValue) * (chartContainer.clientHeight - 50);
             bar.style.height = `${barHeight}px`;
             bar.setAttribute('data-count', count);
 
@@ -113,9 +75,7 @@ async function simulateData() {
         const response = await fetch(`${API_BASE}/simulate/`, {
             method: 'POST'
         });
-
         if (!response.ok) throw new Error('模拟数据生成失败');
-
         alert('成功生成10条模拟数据！');
         await loadComplaints();
         await loadStatistics();
@@ -123,50 +83,33 @@ async function simulateData() {
         alert(`错误：${error.message}`);
     }
 }
-const complaintModal = document.getElementById('complaintModal');
-const modalCategory = document.getElementById('modalCategory');
-const modalUserId = document.getElementById('modalUserId');
-const modalTime = document.getElementById('modalTime');
-const modalContent = document.getElementById('modalContent');
-const closeButton = document.querySelector('.close-button');
-
-function showComplaintDetails(category, userId, time, content, reply) {
-    modalCategory.textContent = category;
-    modalUserId.textContent = userId;
-    modalTime.textContent = time;
-    modalContent.textContent = content;
-    modalReply.textContent = reply || '未回复';
-    complaintModal.style.display = 'flex';
-}
-
-closeButton.addEventListener('click', () => {
-    complaintModal.style.display = 'none';
-});
-
-window.addEventListener('click', (event) => {
-    if (event.target === complaintModal) {
-        complaintModal.style.display = 'none';
-    }
-});
 
 async function handleSearch() {
     const query = document.getElementById('naturalQuery').value;
     const outputDiv = document.getElementById('llmOutput');
+    outputDiv.innerHTML = '<div class="loading">查询中...</div>';
 
     try {
-        const response = await fetch(`${API_BASE}/complaints/?q=${encodeURIComponent(query)}`);
+        const [complaintsData, analysisData] = await Promise.all([
+            fetch(`${API_BASE}/complaints/?q=${encodeURIComponent(query)}`)
+                .then(res => res.ok ? res.json() : []),
+            fetch(`${API_BASE}/analyze/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: query })
+            }).then(res => res.ok ? res.json() : { suggestion: "分析服务不可用" })
+        ]);
 
-        if (!response.ok) throw new Error('查询失败');
+        const complaints = Array.isArray(complaintsData) ? complaintsData : [];
+        const analysis = analysisData;
 
-        const complaints = await response.json();
-        outputDiv.innerHTML = `
-            <div class="query-result">
-                <h3>查询解析：</h3>
-                <p>匹配记录：${complaints.length} 条</p>
-            </div>
-        `;
+        // 显示分析结果弹窗
+        showAnalysisResult(analysis);
 
-        // 更新投诉列表显示查询结果
+        // 清空查询结果区域
+        outputDiv.innerHTML = '';
+
+        // 更新投诉列表
         const tbody = document.getElementById('complaintList');
         tbody.innerHTML = complaints.map(complaint => `
             <tr ondblclick="showComplaintDetails('${complaint.complaint_category}', '${complaint.user_id}', '${new Date(complaint.complaint_time).toLocaleString()}', '${complaint.content.replace(/'/g, "\\'").replace(/\n/g, "\\n")}', '${complaint.reply ? complaint.reply.replace(/'/g, "\\'").replace(/\n/g, "\\n") : ''}')">
@@ -179,6 +122,88 @@ async function handleSearch() {
             </tr>
         `).join('');
     } catch (error) {
-        outputDiv.innerHTML = `<div class="error">错误：${error.message}</div>`;
+        outputDiv.innerHTML = `<div class="error">查询失败: ${error.message}</div>`;
+        console.error("查询失败:", error);
     }
 }
+
+function showComplaintDetails(category, userId, time, content, reply) {
+    document.getElementById('modalCategory').textContent = category;
+    document.getElementById('modalUserId').textContent = userId;
+    document.getElementById('modalTime').textContent = time;
+    document.getElementById('modalContent').textContent = content;
+    document.getElementById('modalReply').textContent = reply || '未回复';
+    document.getElementById('complaintModal').style.display = 'flex';
+}
+
+function showAnalysisResult(analysis) {
+    document.getElementById('analysisCategory').textContent = analysis.category || '未知';
+    document.getElementById('analysisReason').textContent = analysis.reason || '无原因分析';
+
+    // 将Markdown格式的处理建议转换为HTML
+    const suggestion = analysis.suggestion || '无处理建议';
+    let processedSuggestion = suggestion.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // 加粗
+
+    const lines = processedSuggestion.split('\n');
+    let htmlParts = [];
+    let inList = false;
+
+    lines.forEach(line => {
+        const trimmedLine = line.trim();
+        if (trimmedLine.match(/^\d+\.\s+/) || trimmedLine.match(/^[\*\-\+]\s+/)) { // 匹配数字或无序列表项
+            if (!inList) {
+                htmlParts.push('<ul>');
+                inList = true;
+            }
+            htmlParts.push(`<li>${trimmedLine.replace(/^\d+\.\s+/, '').replace(/^[\*\-\+]\s+/, '')}</li>`);
+        } else {
+            if (inList) {
+                htmlParts.push('</ul>');
+                inList = false;
+            }
+            if (trimmedLine) { // 避免空行生成<p>
+                htmlParts.push(`<p>${trimmedLine}</p>`);
+            }
+        }
+    });
+
+    if (inList) {
+        htmlParts.push('</ul>');
+    }
+
+    document.getElementById('analysisSuggestion').innerHTML = htmlParts.join('');
+    document.getElementById('analysisModal').style.display = 'flex';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Initial data load
+    loadComplaints();
+    loadStatistics();
+
+    // Button listeners
+    document.querySelector('.simulate-btn').addEventListener('click', simulateData);
+    document.querySelector('.refresh-btn').addEventListener('click', loadComplaints);
+    document.querySelector('.search-btn').addEventListener('click', handleSearch);
+
+    // Modal listeners
+    const complaintModal = document.getElementById('complaintModal');
+    const closeButton = document.querySelector('.close-button');
+
+    closeButton.addEventListener('click', () => {
+        complaintModal.style.display = 'none';
+    });
+
+    window.addEventListener('click', (event) => {
+        if (event.target === complaintModal) {
+            complaintModal.style.display = 'none';
+        }
+        if (event.target === document.getElementById('analysisModal')) {
+            document.getElementById('analysisModal').style.display = 'none';
+        }
+    });
+
+    // 添加分析结果弹窗关闭按钮事件
+    document.querySelector('#analysisModal .close-button').addEventListener('click', () => {
+        document.getElementById('analysisModal').style.display = 'none';
+    });
+});
