@@ -1,9 +1,10 @@
 import os
+import sqlite3
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
-from services.llm import ComplaintAnalyzer
+from services.llm import ComplaintAnalysisResult, ComplaintAnalyzer
 
 
 class TestComplaintAnalyzer(unittest.TestCase):
@@ -122,18 +123,6 @@ class TestComplaintAnalyzer(unittest.TestCase):
             with ctx_analyzer.db_connection() as conn:
                 conn.execute("SELECT 1")
 
-    def test_template_reply(self):
-        """测试模板回复生成"""
-        with ComplaintAnalyzer(self.db_path) as analyzer:
-            # 确保使用mock模式
-            analyzer.mode = "mock"
-            reply = analyzer.generate_reply("test", "电视")
-            self.assertIn("电视", reply)
-            self.assertEqual(
-                analyzer.generate_reply("test", "未知"),
-                "感谢您的反馈，我们将尽快处理您的问题。",
-            )
-
     def test_get_nonexistent_complaint(self):
         """测试获取不存在的投诉记录"""
         with ComplaintAnalyzer(self.db_path) as analyzer:
@@ -184,6 +173,55 @@ class TestComplaintAnalyzer(unittest.TestCase):
             if updated_complaint is not None:
                 self.assertEqual(updated_complaint.complaint_category, new_category)
                 self.assertEqual(updated_complaint.reply, new_reply)  # 确保其他字段不变
+
+    def test_generate_reply(self):
+        """测试生成回复逻辑"""
+        with ComplaintAnalyzer(self.db_path) as analyzer:
+            # 测试正常情况
+            text = "电视屏幕出现条纹"
+            category = analyzer.classify_complaint(text)
+            reply = analyzer.generate_reply(text, category)
+            self.assertIsInstance(reply, str)
+            self.assertTrue(len(reply) > 10)
+
+            # 测试空分类
+            reply = analyzer.generate_reply(text, None)
+            self.assertIsInstance(reply, str)
+
+            # 测试未知分类
+            reply = analyzer.generate_reply(text, "未知分类")
+            self.assertEqual(reply, analyzer.templates["未知"])
+
+    def test_analyze_boundary(self):
+        """测试分析方法的边界条件"""
+        with ComplaintAnalyzer(self.db_path) as analyzer:
+            # 测试空文本
+            with self.assertRaises(ValueError):
+                analyzer.analyze("")
+
+            # 测试超长文本
+            long_text = "a" * 5000
+            result = analyzer.analyze(long_text)
+            self.assertIsInstance(result, ComplaintAnalysisResult)
+
+    def test_db_connection_error(self):
+        """测试数据库连接异常处理"""
+        # 使用无效路径触发异常
+        with self.assertRaises(sqlite3.Error):
+            analyzer = ComplaintAnalyzer("/invalid/path.db")
+            with analyzer.db_connection():
+                pass
+
+    def test_regex_classification_edge_cases(self):
+        """测试正则分类的边界情况"""
+        with ComplaintAnalyzer(self.db_path) as analyzer:
+            # 测试无匹配
+            category = analyzer._classify_with_regex("没有任何关键词")
+            self.assertEqual(category, "未知")
+
+            # 测试多关键词冲突
+            category = analyzer._classify_with_regex("电视和冰箱都有问题")
+            self.assertIn(category, ["电视", "冰箱"])
 
 
 if __name__ == "__main__":

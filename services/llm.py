@@ -201,6 +201,10 @@ class ComplaintAnalyzer:
 
         logger.debug(f"为类别'{category}'生成回复")
 
+        # 未知分类直接返回模板回复
+        if category in ("未知", "未知分类"):
+            return self.templates["未知"]
+
         if self.mode == "mock" or not self.reply_chain:
             return self.templates.get(category, self.templates["未知"])
 
@@ -213,6 +217,9 @@ class ComplaintAnalyzer:
 
     def analyze(self, text: NonEmptyString) -> ComplaintAnalysisResult:
         """分析投诉文本，返回分类和回复"""
+        if not text or not isinstance(text, str):
+            raise ValueError("文本内容不能为空")
+
         logger.info(f"开始分析投诉: {text[:50]}...")
         category = self.classify_complaint(text)
         reply = self.generate_reply(text, category)

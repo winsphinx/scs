@@ -128,3 +128,27 @@ class TestComplaintAPI(unittest.TestCase):
 
         if response.status_code == 200:
             self.assertGreaterEqual(len(response.json()), 0)
+
+    def test_analyze_complaint(self):
+        """测试分析投诉内容接口"""
+        # 正常请求测试
+        test_data = {"text": "我的手机屏幕坏了，需要维修"}
+        response = self.client.post("/analyze/", json=test_data)
+        self.assertEqual(response.status_code, 200)
+        result = response.json()
+        self.assertIn("category", result)
+        self.assertIn("reply", result)
+        self.assertIn("suggestion", result)
+
+        # 空内容测试
+        empty_data = {"text": ""}
+        response = self.client.post("/analyze/", json=empty_data)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("投诉内容不能为空", response.json()["detail"])
+
+        # 无效请求测试
+        invalid_data = {"invalid": "data"}
+        response = self.client.post("/analyze/", json=invalid_data)
+        self.assertEqual(response.status_code, 400)
+        response = self.client.post("/analyze/", json=invalid_data)
+        self.assertEqual(response.status_code, 400)

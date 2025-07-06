@@ -202,11 +202,11 @@ def analyze_complaint(
     analyzer: ComplaintAnalyzer = Depends(lambda: ComplaintAnalyzer()),
 ):
     """分析投诉内容并返回处理方法"""
-    try:
-        text = request.get("text", "")
-        if not text:
-            raise HTTPException(status_code=400, detail="投诉内容不能为空")
+    text = request.get("text", "")
+    if not text:
+        raise HTTPException(status_code=400, detail="投诉内容不能为空")
 
+    try:
         result = analyzer.analyze(text)
         logger.info(f"Analyzer category: {result.category}, reply: {result.reply}")
         return {
