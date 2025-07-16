@@ -22,17 +22,15 @@
 │   ├── fetch.py        # 数据抓取服务
 │   └── llm.py          # LLM服务实现
 ├── templates/          # 前端资源
-│   ├── static/         # 静态资源
+│   ├── static/         # 静态资源目录
 │   └── index.html      # 前端页面
-├── tests/              # 测试代码
+├── tests/              # 测试代码目录
 ├── utils/              # 工具模块
 │   ├── config.py       # 配置管理
 │   ├── db.py           # 数据库操作
 │   └── logging.py      # 日志配置
 ├── .env.example        # 环境变量示例
-├── main.py             # 主程序入口
-├── pyproject.toml      # 项目库配置
-└── uv.lock             # 依赖锁定文件
+└── main.py             # 主程序入口
 ```
 
 ## 开发环境
@@ -64,41 +62,88 @@ uv run main.py
 ## 测试方法
 
 ```bash
+source .venv/Scripts/activate
 python -m unittest discover -s ./test/
 ```
 
 ## API使用说明
 
-1. 启动服务：
-```bash
-uv run main.py
-```
+### 基础信息
+- 基础URL: `http://localhost:8000`
+- 默认端口: 8000
+- 响应格式: JSON
 
-2. 创建投诉(POST):
-```
+### 投诉管理API
+
+#### 1. 创建投诉 (POST)
+```http
 POST /complaint/
 Content-Type: application/json
+Authorization: Bearer {API_KEY}
 
+请求示例:
 {
-    "title": "投诉标题",
-    "content": "投诉内容",
-    "category": "投诉类别"
+    "title": "通话质量问题",
+    "content": "网络信号覆盖存在缺陷",
+    "category": "product"
 }
+
+成功响应 (201 Created):
+{
+    "id": 123,
+    "status": "pending",
+    "created_at": "2025-01-01T00:00:00"
+}
+
+错误响应:
+- 400 Bad Request: 请求参数缺失或无效
+- 401 Unauthorized: 未提供有效API_KEY
 ```
 
-3. 查询投诉(GET):
-```
+#### 2. 查询投诉 (GET)
+```http
 GET /complaint/
+GET /complaint/?category=product
+GET /complaint/?status=pending
+
+成功响应 (200 OK):
+[
+    {
+        "id": 123,
+        "title": "通话质量问题",
+        "status": "pending",
+        "created_at": "2025-01-01T00:00:00"
+    }
+]
+
+错误响应:
+- 401 Unauthorized: 未提供有效API_KEY
 ```
 
-4. 智能问答(POST):
-```
+### 智能问答API
+
+#### 3. 智能问答 (POST)
+```http
 POST /query/
 Content-Type: application/json
+Authorization: Bearer {API_KEY}
 
+请求示例:
 {
-    "question": "你的问题"
+    "question": "如何处理通话质量投诉?",
+    "context": "product"
 }
+
+成功响应 (200 OK):
+{
+    "answer": "建议1. ...",
+    "sources": ["KB001", "POLICY2023"]
+}
+
+错误响应:
+- 400 Bad Request: 问题内容为空
+- 401 Unauthorized: 未提供有效API_KEY
+- 503 Service Unavailable: LLM服务不可用
 ```
 
 ## 贡献指南
