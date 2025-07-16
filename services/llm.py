@@ -124,8 +124,8 @@ class ComplaintAnalyzer:
             )
         else:
             # Mock处理链
-            self.classification_chain = self._mock_chain("未知")
-            self.reply_chain = self._mock_chain(self.templates["未知"])
+            self.classification_chain = self._mock_chain("其它")
+            self.reply_chain = self._mock_chain(self.templates["其它"])
             self.query_parser_chain = self._mock_chain("")
 
     def _mock_chain(self, default_value: Any) -> Runnable:
@@ -175,22 +175,34 @@ class ComplaintAnalyzer:
         """分类客户投诉文本，返回产品类别"""
         logger.debug(f"开始分类投诉文本: {text[:50]}...")
 
-        if self.mode == "mock" or not self.classification_chain:
-            return self._classify_with_regex(text)
+        # 优先使用正则表达式进行精确匹配
+        regex_result = self._classify_with_regex(text)
+        if regex_result != "其它":
+            return regex_result
 
-        try:
-            result = self.classification_chain.invoke(text)
-            return result.strip()
-        except Exception as e:
-            logger.error(f"分类投诉时出错: {e}")
-            return self._classify_with_regex(text)
+        # 如果正则未匹配到，且不是mock模式，使用LLM进行分类
+        if self.mode != "mock" and self.classification_chain:
+            try:
+                result = self.classification_chain.invoke(text)
+                llm_result = result.strip()
+                # 确保LLM结果在有效范围内
+                valid_categories = ["手机", "宽带", "固话", "其它"]
+                if llm_result in valid_categories:
+                    return llm_result
+                else:
+                    logger.warning(f"LLM返回了无效分类: {llm_result}，使用'其它'")
+                    return "其它"
+            except Exception as e:
+                logger.error(f"分类投诉时出错: {e}")
+
+        return "其它"
 
     def _classify_with_regex(self, text: str) -> str:
         """使用正则表达式进行分类"""
         for category, pattern in self.product_patterns.items():
             if pattern.search(text):
                 return category
-        return "未知"
+        return "其它"
 
     def generate_reply(
         self, text: NonEmptyString, category: Optional[str] = None
@@ -201,19 +213,19 @@ class ComplaintAnalyzer:
 
         logger.debug(f"为类别'{category}'生成回复")
 
-        # 未知分类直接返回模板回复
-        if category in ("未知", "未知分类"):
-            return self.templates["未知"]
+        # 其它分类直接返回模板回复
+        if category in ("其它", "其它分类"):
+            return self.templates["其它"]
 
         if self.mode == "mock" or not self.reply_chain:
-            return self.templates.get(category, self.templates["未知"])
+            return self.templates.get(category, self.templates["其它"])
 
         try:
             result = self.reply_chain.invoke({"text": text, "category": category})
             return result.strip()
         except Exception as e:
             logger.error(f"生成回复时出错: {e}")
-            return self.templates.get(category, self.templates["未知"])
+            return self.templates.get(category, self.templates["其它"])
 
     def analyze(self, text: NonEmptyString) -> ComplaintAnalysisResult:
         """分析投诉文本，返回分类和回复"""

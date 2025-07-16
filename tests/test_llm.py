@@ -43,7 +43,7 @@ class TestComplaintAnalyzer(unittest.TestCase):
         """测试完整的CRUD流程"""
         with ComplaintAnalyzer(self.db_path) as analyzer:
             # 测试创建
-            test_text = "电视屏幕出现条纹"
+            test_text = "手机信号差无法上网"
             result = analyzer.analyze(test_text)
             category = result.category
             reply = result.reply
@@ -58,8 +58,8 @@ class TestComplaintAnalyzer(unittest.TestCase):
                 # 提取分类结果并进行断言
                 category_result = complaint.complaint_category
                 self.assertTrue(
-                    category_result.strip().endswith("电视"),
-                    f"Expected '电视', but got '{category_result}'",
+                    category_result.strip().endswith("手机"),
+                    f"Expected '手机', but got '{category_result}'",
                 )
                 from datetime import datetime
 
@@ -84,18 +84,20 @@ class TestComplaintAnalyzer(unittest.TestCase):
         with ComplaintAnalyzer(self.db_path) as analyzer:
             # 测试正则匹配
             # 提取分类结果并进行断言
-            result = analyzer.classify_complaint("冰箱不制冷")
+            result = analyzer.classify_complaint("宽带网速慢")
             self.assertTrue(
-                result.strip().endswith("冰箱"), f"Expected '冰箱', but got '{result}'"
+                result.strip().endswith("宽带"),
+                f"Expected '宽带', but got '{result}'",
             )
-            result = analyzer.classify_complaint("洗衣机漏水")
+            result = analyzer.classify_complaint("固话无声音")
             self.assertTrue(
-                result.strip().endswith("洗衣机"),
-                f"Expected '洗衣机', but got '{result}'",
+                result.strip().endswith("固话"),
+                f"Expected '固话', but got '{result}'",
             )
-            result = analyzer.classify_complaint("未知产品问题")
+            result = analyzer.classify_complaint("账单问题")
             self.assertTrue(
-                result.strip().endswith("未知"), f"Expected '未知', but got '{result}'"
+                result.strip().endswith("其它"),
+                f"Expected '其它', but got '{result}'",
             )
 
     @patch.dict(os.environ, {"LLM_MODE": "mock", "API_KEY": "test"})
@@ -103,17 +105,17 @@ class TestComplaintAnalyzer(unittest.TestCase):
         """测试LLM模式下的分类"""
         mock_llm = MagicMock()
         mock_response = MagicMock()
-        mock_response.content = "冰箱"
+        mock_response.content = "宽带"
         mock_llm.invoke.return_value = mock_response
 
         with patch("services.llm.ChatOpenAI", return_value=mock_llm):
             # 直接mock分类结果
             with patch("services.llm.ComplaintAnalyzer") as MockAnalyzer:
                 mock_instance = MockAnalyzer.return_value
-                mock_instance.classify_complaint.return_value = "冰箱"
+                mock_instance.classify_complaint.return_value = "宽带"
                 analyzer = MockAnalyzer(self.db_path)  # 传入 db_path
-                result = analyzer.classify_complaint("制冷效果差")
-                self.assertEqual(result, "冰箱")
+                result = analyzer.classify_complaint("网络连接问题")
+                self.assertEqual(result, "宽带")
 
     def test_context_manager(self):
         """测试上下文管理器关闭连接"""
@@ -163,7 +165,7 @@ class TestComplaintAnalyzer(unittest.TestCase):
                 )  # 确保其他字段不变
 
             # 只更新分类
-            new_category = "冰箱"
+            new_category = "手机"
             updated = analyzer.update_complaint(
                 complaint_id, complaint_category=new_category
             )
@@ -178,7 +180,7 @@ class TestComplaintAnalyzer(unittest.TestCase):
         """测试生成回复逻辑"""
         with ComplaintAnalyzer(self.db_path) as analyzer:
             # 测试正常情况
-            text = "电视屏幕出现条纹"
+            text = "手机电池耗电太快"
             category = analyzer.classify_complaint(text)
             reply = analyzer.generate_reply(text, category)
             self.assertIsInstance(reply, str)
@@ -188,9 +190,9 @@ class TestComplaintAnalyzer(unittest.TestCase):
             reply = analyzer.generate_reply(text, None)
             self.assertIsInstance(reply, str)
 
-            # 测试未知分类
-            reply = analyzer.generate_reply(text, "未知分类")
-            self.assertEqual(reply, analyzer.templates["未知"])
+            # 测试其它分类
+            reply = analyzer.generate_reply(text, "其它分类")
+            self.assertEqual(reply, analyzer.templates["其它"])
 
     def test_analyze_boundary(self):
         """测试分析方法的边界条件"""
@@ -217,11 +219,11 @@ class TestComplaintAnalyzer(unittest.TestCase):
         with ComplaintAnalyzer(self.db_path) as analyzer:
             # 测试无匹配
             category = analyzer._classify_with_regex("没有任何关键词")
-            self.assertEqual(category, "未知")
+            self.assertEqual(category, "其它")
 
             # 测试多关键词冲突
-            category = analyzer._classify_with_regex("电视和冰箱都有问题")
-            self.assertIn(category, ["电视", "冰箱"])
+            category = analyzer._classify_with_regex("手机和宽带都有问题")
+            self.assertIn(category, ["手机", "宽带"])
 
 
 if __name__ == "__main__":

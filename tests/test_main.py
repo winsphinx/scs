@@ -39,10 +39,10 @@ class TestComplaintAPI(unittest.TestCase):
 
     def test_create_complaint(self):
         test_data = {
-            "complaint_time": "2024-01-01T00:00:00",
-            "content": "测试投诉内容",
+            "complaint_time": "2025-01-01T00:00:00",
+            "content": "手机信号差无法上网",
             "user_id": "test_user_1",
-            "complaint_category": "electronics",
+            "complaint_category": "手机",
         }
         response = self.client.post("/complaints/", json=test_data)
         self.assertEqual(response.status_code, 200)
@@ -59,10 +59,10 @@ class TestComplaintAPI(unittest.TestCase):
         create_res = self.client.post(
             "/complaints/",
             json={
-                "complaint_time": "2024-01-01T00:00:00",
-                "content": "完整流程测试",
+                "complaint_time": "2025-01-01T00:00:00",
+                "content": "宽带网速慢影响工作",
                 "user_id": "crud_test_user",
-                "complaint_category": "home",
+                "complaint_category": "宽带",
             },
         )
         self.assertEqual(create_res.status_code, 200)
@@ -71,20 +71,20 @@ class TestComplaintAPI(unittest.TestCase):
         # 读取
         get_res = self.client.get(f"/complaints/{complaint_id}")
         self.assertEqual(get_res.status_code, 200)
-        self.assertEqual(get_res.json()["content"], "完整流程测试")
+        self.assertEqual(get_res.json()["content"], "宽带网速慢影响工作")
 
         # 更新
         update_res = self.client.put(
             f"/complaints/{complaint_id}",
             json={
-                "complaint_time": "2024-01-02T00:00:00",
-                "content": "更新后的内容",
+                "complaint_time": "2025-01-02T00:00:00",
+                "content": "更新后的宽带问题描述",
                 "user_id": "crud_test_user",
-                "complaint_category": "home",
+                "complaint_category": "宽带",
             },
         )
         self.assertEqual(update_res.status_code, 200)
-        self.assertEqual(update_res.json()["content"], "更新后的内容")
+        self.assertEqual(update_res.json()["content"], "更新后的宽带问题描述")
 
         # 删除
         delete_res = self.client.delete(f"/complaints/{complaint_id}")
@@ -97,12 +97,12 @@ class TestComplaintAPI(unittest.TestCase):
 
     def test_statistics(self):
         # 添加测试数据
-        categories = ["electronics", "clothing", "food"]
+        categories = ["手机", "宽带", "固话"]
         for _ in range(5):
             category = random.choice(categories)
             complaint = {
                 "complaint_time": datetime.now().isoformat(),
-                "content": f"测试统计{category}",
+                "content": f"测试统计{category}问题",
                 "user_id": "stat_test_user",
                 "complaint_category": category,
             }
@@ -123,7 +123,7 @@ class TestComplaintAPI(unittest.TestCase):
     def test_query_with_search(self):
         # 需要根据实际query_parser_chain的实现调整测试逻辑
         # 这里测试基本查询功能
-        response = self.client.get("/complaints/?q=complaint_category:electronics")
+        response = self.client.get("/complaints/?q=complaint_category:手机")
         self.assertIn(response.status_code, (200, 400))  # 根据实际解析器实现可能返回400
 
         if response.status_code == 200:

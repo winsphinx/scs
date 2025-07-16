@@ -137,7 +137,7 @@ function showComplaintDetails(category, userId, time, content, reply) {
 }
 
 function showAnalysisResult(analysis) {
-    document.getElementById('analysisCategory').textContent = analysis.category || '未知';
+    document.getElementById('analysisCategory').textContent = analysis.category || '其它';
     document.getElementById('analysisReason').textContent = analysis.reason || '无原因分析';
 
     // 将Markdown格式的处理建议转换为HTML

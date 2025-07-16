@@ -182,7 +182,7 @@ def simulate_data(db: Session = Depends(get_db)):
         problem = random.choice(config["problems"][category])
         complaint = Complaint(
             complaint_time=datetime.now(),
-            content=f"我的{category}{problem}" if category != "未知" else problem,
+            content=f"我的{category}{problem}" if category != "其它" else problem,
             user_id=f"user_{random.randint(1, 1000):04d}",
             complaint_category=category,
             reply=(
