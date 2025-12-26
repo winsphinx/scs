@@ -5,9 +5,9 @@ description = "Smart Customer Service"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.117.0",
-    "langchain>=0.3.27",
-    "langchain-community>=0.3.29",
-    "langchain-openai>=0.3.33",
-    "uvicorn>=0.37.0",
+    "fastapi>=0.127.0",
+    "langchain>=1.2.0",
+    "langchain-community>=0.4.0",
+    "langchain-openai>=1.1.0",
+    "uvicorn>=0.40.0",
 ]
